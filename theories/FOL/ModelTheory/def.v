@@ -8,19 +8,18 @@ Require Import Vector.
 Local Set Implicit Arguments.
 Local Unset Strict Implicit.
 
-Require Export Undecidability.FOL.Semantics.Tarski.FullCore.
+Require Export Undecidability.FOL.Semantics.Tarski.FragmentCore.
 
 Section Isomorphism.
 
     Context {Σ_funcs : funcs_signature}.
     Context {Σ_preds : preds_signature}.
-    Context {ff : falsity_flag}.
 
     Record model := 
-        {
+    {
         domain :> Type;
         interp_md :> interp domain
-        }.
+    }.
 
 
     Arguments i_func {_ _ _} _ _ _.
@@ -62,6 +61,15 @@ Section Isomorphism.
         morphism_bijective : bijective h;
     }.
 
+
+End Isomorphism.
+
+Section Elementary.
+
+    Context {Σ_funcs : funcs_signature}.
+    Context {Σ_preds : preds_signature}.
+    Context {ff : falsity_flag}.
+
     Definition theory_model (M: model): theory :=
         fun phi => closed phi /\ (interp_md M) ⊨= phi.
 
@@ -73,20 +81,67 @@ Section Isomorphism.
 
     Definition elementary M N :=
         forall φ, theory_model M φ <-> theory_model N φ.
-    
-    Notation "M ≡ N" := (elementary M N) (at level 30).
-    Notation "M ⋍ N" := (exists h: M -> N, isomorphism h) (at level 30).
 
-    Fact isomorphism_implies_elementary (M N: model): 
+End Elementary.
+
+
+Notation "M ≡ N" := (elementary M N) (at level 30).
+Notation "M ⋍ N" := (exists h: M -> N, isomorphism h) (at level 30).
+
+Arguments closed_theory_of_model {_ _ _} _.
+(* closed_theory_of_model : ∀ M:model, closed_T (theory_model M)*)
+
+
+
+Section ModelFacts.
+
+    Context {Σ_funcs : funcs_signature}.
+    Context {Σ_preds : preds_signature}.
+    Context {ff : falsity_flag}.
+
+
+    (* Fact isomorphism_implies_elementary (M N: model): 
         M ⋍ N -> M ≡ N.
     Proof.
-    Admitted.
+    Admitted. *)
 
-    Definition countable_model (M: model) :=
-        exists f: nat -> domain M, surjective f.
+End ModelFacts.
 
-    Lemma model_exists M: exists N: model, countable_model N /\ elementary M N.
+Section CountableModel.
+
+    Require Import Undecidability.FOL.Completeness.TarskiCompleteness.
+    Require Import Undecidability.Synthetic.EnumerabilityFacts.
+
+    Context {ff : falsity_flag}.
+    Context {Σf : funcs_signature} {Σp : preds_signature}.
+    Context {HdF : eq_dec Σf} {HdP : eq_dec Σp}.
+    Variable eF : nat -> option Σf.
+    Context {HeF : enumerator__T eF Σf}.
+    Variable eP : nat -> option Σp.
+    Context {HeP : enumerator__T eP Σp}.
+
+
+    Definition countable_model M :=
+        exists f: nat -> M, surjective f.
+
+
+    Definition term_model M: model := 
+    {|
+        domain := term;
+        interp_md := model_bot (closed_theory_of_model M)
+    |}.
+
+    (* Lemma term_model_countable M: countable_model M.
     Proof.
     Admitted.
 
-End Isomorphism.
+    Theorem LS_downward (M: model): 
+        exists N: model, countable_model N /\ M ≡ N.
+    Proof.
+        exists (term_model M).
+        split. apply term_model_countable.
+    Admitted. *)
+
+
+End CountableModel.
+
