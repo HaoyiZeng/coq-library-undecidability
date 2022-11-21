@@ -17,8 +17,8 @@ Section Isomorphism.
 
     Class model := 
     {
-        domain : Type;
-        interp' : interp domain
+    domain : Type;
+    interp' : interp domain
     }.
 
     Coercion domain : model >-> Sortclass.
@@ -28,11 +28,11 @@ Section Isomorphism.
 
     Definition preserve_func {M N: model} (h: M -> N) := 
         forall func v, 
-        h (i_func interp' func v) = i_func interp' func (map h v).
+            h (i_func interp' func v) = i_func interp' func (map h v).
         
     Definition preserve_pred {M N: model} (h: M -> N) :=
         forall pred v,
-        i_atom interp' pred v -> i_atom interp' pred (map h v).
+            i_atom interp' pred v -> i_atom interp' pred (map h v).
         
     Definition strong_preserve_pred {M N: model} (h: M -> N) :=
         forall pred v,
@@ -71,7 +71,11 @@ Section Isomorphism.
         morphism_surjective : surjective h 
     }.
 
+    Definition isomorphic {M N: model} :=
+        exists h: M -> N, isomorphism h.
 
+    (* 
+    Test the definition
     Goal forall (M N: model) (h: M -> N), isomorphism h -> embedding h.
     Proof.
         intros M N h iso.
@@ -80,9 +84,12 @@ Section Isomorphism.
         apply pred_preserved.
         apply pred_strong_preserved.
         apply morphism_injectived.
-    Qed.
+    Qed. 
+    *)
 
 End Isomorphism.
+
+Notation "M ≅ N" := (exists h: M -> N, isomorphism h) (at level 30).
 
 Section Elementary.
 
@@ -99,16 +106,16 @@ Section Elementary.
         exact closed.
     Qed.
 
-   
 
     Definition elementary M N :=
         forall φ, theory_model M φ <-> theory_model N φ.
+
 
 End Elementary.
 
 
 Notation "M ≡ N" := (elementary M N) (at level 30).
-Notation "M ⋍ N" := (exists h: M -> N, isomorphism h) (at level 30).
+
 
 Arguments closed_theory_of_model {_ _ _} _.
 (* closed_theory_of_model : ∀ M: model, closed_T (theory_model M) *)
@@ -173,7 +180,7 @@ Section ModelFacts.
     Arguments iso_impl_elementary' {_ _ _ _ _}.
 
     Theorem iso_impl_elementary {M N: model}: 
-        M ⋍ N -> M ≡ N.
+        M ≅ N -> M ≡ N.
     Proof.
         intros [h iso] phi; split; intros [cphi satphi]; split; try easy; intro env.
         - destruct (morphism_surjective (env O)) as [m _].
@@ -206,10 +213,15 @@ Section CountableModel.
 
     Existing Instance falsity_on.
 
+
+
+    Instance model_bot' M: interp term :=
+      {| i_func := func; i_atom := fun P v => atom P v ∈ theory_model M|}.
+
     Instance term_model M: model := 
     {
         domain := term;
-        interp' := model_bot (closed_theory_of_model M)
+        interp' := model_bot' M
     }.
 
     Variable list_Funcs : nat -> list syms.
@@ -225,12 +237,9 @@ Section CountableModel.
 
     Require Import Undecidability.FOL.Deduction.FragmentND.
 
-    Lemma Hcon_M: forall M: model, consistent class (theory_model M).
-    Proof.
-        intros M H.
-        destruct H as [h1 [h2 h3]].
-    Admitted.
+    Hypothesis Hcon_M: forall M: model, consistent class (theory_model M).
 
+(*
     (* Is't the theory of model a maximal theory with witness? *)
 
     Theorem LS_downward (M: model): 
@@ -239,44 +248,58 @@ Section CountableModel.
         exists (term_model M).
         split. apply term_model_countable.
         intro φ; split; intros [cphi satphi]; split; try easy; intro env.
-        induction φ.
-        - apply satphi. refine (fun x => _). admit.
-        - cbn in env. unfold sat. 
-          unfold sat in satphi.
-
-
-    
+        induction φ; cbn.
+        - apply satphi. admit.
+        - constructor.
+          + admit. 
+          + intro ρ. admit.
+        - destruct b0. intro. apply IHφ2. admit. intro. cbn in satphi. apply satphi. admit.
+        - destruct q. admit.
+        - destruct φ.
+        + apply satphi. exact (fun n => var n).
+        + cbn. unfold sat in satphi. admit.
+        + destruct b0; cbn. intro. cbn in satphi. admit.
+        + destruct q; cbn. intro d. cbn in satphi. 
+          specialize (satphi (fun n => var n)).
+        admit.    
     Admitted.
-
+*)
 
 End CountableModel.
 
 
 Section relation.
 
-Import Coq.Vectors.Vector.
-Local Notation vec := t.
+    Import Coq.Vectors.Vector.
+    Local Notation vec := t.
 
-Definition total_rel (X Y : Type) (R : X -> Y -> Prop) :=
-  forall x, exists y, R x y.
+    Definition total_rel (X Y : Type) (R : X -> Y -> Prop) :=
+        forall x, exists y, R x y.
 
-Definition functional_rel X Y (R : X -> Y -> Prop) :=
-forall x y y', R x y -> R x y' -> y = y'.
+    Definition functional_rel X Y (R : X -> Y -> Prop) :=
+        forall x y y', R x y -> R x y' -> y = y'.
 
-Definition rev {X Y} (R: X -> Y -> Prop) x y := R y x.
+    Definition function_rel {X Y} (R: X -> Y -> Prop) := 
+        functional_rel R /\ total_rel R. 
 
-Definition injective_rel X Y (R : X -> Y -> Prop) :=
-    functional_rel (rev R).
+    Definition rev {X Y} (R: X -> Y -> Prop) x y := R y x.
 
-Definition surjective_rel (X Y : Type) (R : X -> Y -> Prop) :=
-    total_rel (rev R).
+    Definition injective_rel X Y (R : X -> Y -> Prop) :=
+        functional_rel (rev R).
 
-Definition function_rel {X Y} (R: X -> Y -> Prop) := functional_rel R /\ total_rel R. 
+    Definition surjective_rel (X Y : Type) (R : X -> Y -> Prop) :=
+        total_rel (rev R).
 
-Definition bijective_rel X Y (R : X -> Y -> Prop) :=
-    function_rel R /\ function_rel (rev R).
+    Definition bijective_rel X Y (R : X -> Y -> Prop) :=
+        function_rel R /\ function_rel (rev R).
 
-Definition hd {X : Type} {n} (v : vec X (S n)) : X :=
+    Inductive map_rel {X Y: Type} (R: X -> Y -> Prop): forall n: nat, vec X n -> vec Y n -> Prop :=
+        | nil_rel: map_rel R (nil _) (nil _)
+        | cons_rel n x y (vx: vec X n) (vy: vec Y n): 
+            map_rel R vx vy -> R x y -> map_rel R (cons _ x n vx) (cons _ y n vy).
+
+
+(* Definition hd {X : Type} {n} (v : vec X (S n)) : X :=
   match v with
   | cons _ h _ _ => h
   end.
@@ -291,9 +314,9 @@ Fixpoint map_rel {X Y} (R: X -> Y -> Prop) n (v1: vec X n) (v2: vec Y n): Prop :
     | nil _ => fun _ => True 
     | cons _ x _ v1 => 
         fun v2 => (R x (hd v2)) /\ (map_rel R v1 (tl v2))
-    end v2.
+    end v2. *)
 
-Lemma map_rel' {X Y} (R: X -> Y -> Prop) n: 
+(* Lemma map_rel' {X Y} (R: X -> Y -> Prop) n: 
     total_rel R -> forall v: vec X n, exists v', map_rel R v v'.
 Proof.
     intros Tt v. 
@@ -302,12 +325,11 @@ Proof.
     - destruct Hv. destruct (Tt e) as [ne re].
       exists (cons _ ne _ x); cbn.
       split; eassumption.
-Qed.
+Qed. *)
 
-Context {Σ_funcs : funcs_signature}.
-Context {Σ_preds : preds_signature}.
-
-
+    Context {Σ_funcs : funcs_signature}.
+    Context {Σ_preds : preds_signature}.
+    
     Arguments i_func {_ _ _} _ _ _.
     Arguments i_atom {_ _ _} _ _ _.
 
@@ -329,7 +351,7 @@ Context {Σ_preds : preds_signature}.
 
 End relation.
 
-Notation "M ⋍ᵣ N" := (exists R: M -> N -> Prop, isomorphism_rel R) (at level 30).
+Notation "M ≅ᵣ N" := (exists R: M -> N -> Prop, isomorphism_rel R) (at level 30).
 
 Section rel_facts.
 
@@ -340,6 +362,7 @@ Section rel_facts.
     Context {ff : falsity_flag}.
     Arguments eval {_ _ _}.
 
+(*
 
     Lemma term_preserved_rel {M N: model} {ρ ρ'} (R: M -> N -> Prop) : 
        (forall x: nat, R (ρ x) (ρ' x))
@@ -387,7 +410,7 @@ Admitted.
     Arguments iso_impl_elementary_rel' {_ _ _ _ _}.
 
     Theorem iso_impl_elementary_rel {M N: model}: 
-    M ⋍ᵣ N -> M ≡ N.
+    M ≅ᵣ N -> M ≡ N.
     Proof.
       intros [R iso] phi; split; intros [cphi satphi]; split; try easy; intro env.
     - destruct morphism_biject_rel as [[func total] [inj sur]].
@@ -401,7 +424,7 @@ Admitted.
       apply (sat_closed _ _ (fun _ => m) cphi).
       now apply (iso_impl_elementary_rel' (fun _ => m) (fun _ => n)).
 Qed.
-
+*)
 
 End rel_facts.
 
