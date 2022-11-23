@@ -91,30 +91,39 @@ End Isomorphism.
 
 Notation "M ≅ N" := (exists h: M -> N, isomorphism h) (at level 30).
 
+Arguments sat {_ _ _ _ _} _ _, {_ _ _} _ {_} _ _.
+Arguments interp {_ _} _, _ _ _.
+
+Notation "M ⊨[_] phi" := (forall p, sat (@interp' _ _ M) p phi) (at level 21).
+Notation "M ⊨[ ρ ] phi" := (sat (@interp' _ _ M) ρ phi) (at level 21).
+
+Notation "h ∘ ρ" := (funcomp h ρ) (at level 20).
+
 Section Elementary.
 
     Context {Σ_funcs : funcs_signature}.
     Context {Σ_preds : preds_signature}.
     Context {ff : falsity_flag}.
 
-    Definition theory_model `(model): theory :=
-        fun phi => closed phi /\ interp' ⊨= phi.
+    Definition theory_of_model (M: model): theory :=
+        fun φ => closed φ /\ M ⊨[_] φ.
 
-    Fact closed_theory_of_model M: closed_T (theory_model M).
+    Fact closed_theory_of_model M: closed_T (theory_of_model M).
     Proof.
-        intros phi [closed sat].
-        exact closed.
+        now intros phi [closed sat].
     Qed.
 
+    Definition elementary_equivalence M N :=
+        forall phi, closed phi -> (M ⊨[_] phi) <-> (N ⊨[_] phi).
 
-    Definition elementary M N :=
-        forall φ, theory_model M φ <-> theory_model N φ.
+    Definition elementary_homormophism {M N: model} (h: M -> N) :=
+        forall phi ρ, M ⊨[ρ] phi <-> N ⊨[h ∘ ρ] phi.
 
 
 End Elementary.
 
 
-Notation "M ≡ N" := (elementary M N) (at level 30).
+Notation "M ≡ N" := (elementary_equivalence M N) (at level 30).
 
 
 Arguments closed_theory_of_model {_ _ _} _.
@@ -182,7 +191,7 @@ Section ModelFacts.
     Theorem iso_impl_elementary {M N: model}: 
         M ≅ N -> M ≡ N.
     Proof.
-        intros [h iso] phi; split; intros [cphi satphi]; split; try easy; intro env.
+        intros [h iso] phi cphi. split; try easy; intros asup env.
         - destruct (morphism_surjective (env O)) as [m _].
           apply (sat_closed _ _ (fun n => h m) cphi).
           now apply (iso_impl_elementary' (fun n => m) (fun n => h m)).
@@ -190,82 +199,6 @@ Section ModelFacts.
     Qed.
 
 End ModelFacts.
-
-
-Section CountableModel.
-
-    Require Import Undecidability.FOL.Completeness.TarskiCompleteness.
-    Require Import Undecidability.Synthetic.EnumerabilityFacts.
-    From Undecidability.Synthetic Require Import Definitions DecidabilityFacts EnumerabilityFacts ListEnumerabilityFacts ReducibilityFacts.
-
-    (* Context {ff : falsity_flag}. *)
-    Context {Σf : funcs_signature} {Σp : preds_signature}.
-    Context {HdF : eq_dec Σf} {HdP : eq_dec Σp}.
-    Variable eF : nat -> option Σf.
-    Context {HeF : enumerator__T eF Σf}.
-    Variable eP : nat -> option Σp.
-    Context {HeP : enumerator__T eP Σp}.
-
-    Definition countable_model M :=
-        exists f: nat -> M, surjective f.
-
-    
-
-    Existing Instance falsity_on.
-
-
-
-    Instance model_bot' M: interp term :=
-      {| i_func := func; i_atom := fun P v => atom P v ∈ theory_model M|}.
-
-    Instance term_model M: model := 
-    {
-        domain := term;
-        interp' := model_bot' M
-    }.
-
-    Variable list_Funcs : nat -> list syms.
-    Hypothesis enum_Funcs' : list_enumerator__T list_Funcs syms.
-
-    Lemma term_model_countable M: countable_model (term_model M).
-    Proof.
-        destruct (enumT_term enum_Funcs') as [f H]. 
-        exists (fun n => match f n with None => var n | Some t => t end).
-        intro t. destruct (H t) as [n eq].
-        exists n. now rewrite eq.
-    Qed.
-
-    Require Import Undecidability.FOL.Deduction.FragmentND.
-
-    Hypothesis Hcon_M: forall M: model, consistent class (theory_model M).
-
-(*
-    (* Is't the theory of model a maximal theory with witness? *)
-
-    Theorem LS_downward (M: model): 
-        exists N: model, countable_model N /\ M ≡ N.
-    Proof.
-        exists (term_model M).
-        split. apply term_model_countable.
-        intro φ; split; intros [cphi satphi]; split; try easy; intro env.
-        induction φ; cbn.
-        - apply satphi. admit.
-        - constructor.
-          + admit. 
-          + intro ρ. admit.
-        - destruct b0. intro. apply IHφ2. admit. intro. cbn in satphi. apply satphi. admit.
-        - destruct q. admit.
-        - destruct φ.
-        + apply satphi. exact (fun n => var n).
-        + cbn. unfold sat in satphi. admit.
-        + destruct b0; cbn. intro. cbn in satphi. admit.
-        + destruct q; cbn. intro d. cbn in satphi. 
-          specialize (satphi (fun n => var n)).
-        admit.    
-    Admitted.
-*)
-
-End CountableModel.
 
 
 Section relation.
@@ -329,7 +262,7 @@ Qed. *)
 
     Context {Σ_funcs : funcs_signature}.
     Context {Σ_preds : preds_signature}.
-    
+
     Arguments i_func {_ _ _} _ _ _.
     Arguments i_atom {_ _ _} _ _ _.
 
@@ -427,6 +360,57 @@ Qed.
 *)
 
 End rel_facts.
+
+Section CountableModel.
+Require Import Undecidability.FOL.Completeness.TarskiCompleteness.
+Require Import Undecidability.Synthetic.EnumerabilityFacts.
+From Undecidability.Synthetic Require Import Definitions DecidabilityFacts EnumerabilityFacts ListEnumerabilityFacts ReducibilityFacts.
+
+
+
+
+(* Context {ff : falsity_flag}. *)
+Context {Σf : funcs_signature} {Σp : preds_signature}.
+Context {HdF : eq_dec Σf} {HdP : eq_dec Σp}.
+Variable eF : nat -> option Σf.
+Context {HeF : enumerator__T eF Σf}.
+Variable eP : nat -> option Σp.
+Context {HeP : enumerator__T eP Σp}.
+
+Definition countable_model M :=
+    exists f: nat -> M, surjective f.
+
+Existing Instance falsity_on.
+
+Instance term_model M: model := 
+{
+    domain := term;
+    interp' := model_bot (closed_theory_of_model M)
+}.
+
+Variable list_Funcs : nat -> list syms.
+Hypothesis enum_Funcs' : list_enumerator__T list_Funcs syms.
+
+Lemma term_model_countable M: countable_model (term_model M).
+Proof.
+    destruct (enumT_term enum_Funcs') as [f H]. 
+    exists (fun n => match f n with None => var n | Some t => t end).
+    intro t. destruct (H t) as [n eq].
+    exists n. now rewrite eq.
+Qed.
+
+Require Import Undecidability.FOL.Deduction.FragmentND.
+
+Hypothesis Hcon_M: forall M: model, consistent class (theory_of_model M).
+
+
+(* Theorem LS_downward (M: model): 
+    exists N: model, countable_model N /\ M ≡ N.
+Proof.
+    exists (term_model M).
+Admitted. *)
+
+End CountableModel.
 
 
 
