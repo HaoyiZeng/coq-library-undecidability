@@ -10,7 +10,16 @@ Local Set Implicit Arguments.
 
 Require Export Undecidability.FOL.Semantics.Tarski.FragmentCore.
 
-Section Isomorphism.
+
+(* New notatiob so far, for supporting model
+    f[ Model ]
+    p[ Model ]
+    t[ Model ]
+    Model ⊨[_]
+    Model ⊨[ ]
+*)
+
+Section model.
 
     Context {Σ_funcs : funcs_signature}.
     Context {Σ_preds : preds_signature}.
@@ -21,22 +30,51 @@ Section Isomorphism.
     interp' : interp domain
     }.
 
-    Coercion domain : model >-> Sortclass.
+Coercion domain : model >-> Sortclass.
 
-    Arguments i_func {_ _ _} _ _ _.
-    Arguments i_atom {_ _ _} _ _ _.
+End model.
+
+
+Arguments i_func {_ _} _ _ _ _.
+Arguments i_atom {_ _} _ _ _ _.
+Arguments interp' {_ _} _, {_ _ _}.
+Arguments eval {_ _}.
+Notation "func f[ M ] v" := (i_func M (interp' M) func v) (at level 19).
+(* 
+   func: Σ_funcs 
+   M: model
+   v: vec M (sys_ar func) 
+    : M
+*)
+
+Notation "pred p[ M ] v" := (i_atom M (interp' M) pred v) (at level 19).
+(* 
+   pred: Σ_preds
+   M: model
+   v: vec M (sys_ar [pred]) 
+    : Prop
+*)
+
+Notation "term t[ M ] env" := (eval M (interp' M) env term) (at level 19).
+
+
+
+Section Isomorphism.
+
+    Context {Σ_funcs : funcs_signature}.
+    Context {Σ_preds : preds_signature}.
 
     Definition preserve_func {M N: model} (h: M -> N) := 
         forall func v, 
-            h (i_func interp' func v) = i_func interp' func (map h v).
-        
+            h (func f[M] v) = func f[N] (map h v).
+
     Definition preserve_pred {M N: model} (h: M -> N) :=
         forall pred v,
-            i_atom interp' pred v -> i_atom interp' pred (map h v).
+            pred p[M] v -> pred p[N] (map h v).
         
     Definition strong_preserve_pred {M N: model} (h: M -> N) :=
         forall pred v,
-            i_atom interp' pred v <-> i_atom interp' pred (map h v). 
+            pred p[M] v <-> pred p[N] (map h v).
 
     Definition injective {M N} (f: M -> N) :=
         forall n m, f n = f m -> n = m.
@@ -94,8 +132,22 @@ Notation "M ≅ N" := (exists h: M -> N, isomorphism h) (at level 30).
 Arguments sat {_ _ _ _ _} _ _, {_ _ _} _ {_} _ _.
 Arguments interp {_ _} _, _ _ _.
 
-Notation "M ⊨[_] phi" := (forall p, sat (@interp' _ _ M) p phi) (at level 21).
-Notation "M ⊨[ ρ ] phi" := (sat (@interp' _ _ M) ρ phi) (at level 21).
+
+Notation "M ⊨[_] phi" := (forall p, sat (interp' M) p phi) (at level 21).
+(* 
+    M : model
+    phi: form
+        : (nat -> M) -> Prop
+    ∀ env, Model ⊨[env] formula
+*)
+Notation "M ⊨[ ρ ] phi" := (sat (interp' M) ρ phi) (at level 21).
+(* 
+    M: model
+    ρ: nat -> M
+    phi: form
+        : Prop
+    Model ⊨[env] formula
+*)
 
 Notation "h ∘ ρ" := (funcomp h ρ) (at level 20).
 
@@ -143,10 +195,10 @@ Section ModelFacts.
     Lemma term_preserved {M N: model} {ρ ρ'} (h: M -> N) : 
            (forall x: nat, h (ρ x) = ρ' x)
         -> preserve_func h
-        -> forall t: term, h (eval interp' ρ t) = eval interp' ρ' t.
+        -> forall term: term, h (term t[M] ρ) = term t[N] ρ'.
     Proof.
         intros Heq pf.
-        induction t; cbn. easy.
+        induction term; cbn. easy.
         rewrite <- (map_ext_in _ _ _ _ _ v IH).
         rewrite (pf _ (map (eval _ ρ) v)).
         now rewrite map_map.
@@ -162,7 +214,7 @@ Section ModelFacts.
     Lemma iso_impl_elementary' {M N: model} (h: M -> N): 
            isomorphism h 
         -> forall φ ρ ρ', (forall x, h (ρ x) = ρ' x)
-        -> sat interp' ρ φ <-> sat interp' ρ' φ.
+        -> M ⊨[ρ] φ <-> N ⊨[ρ'] φ.
     Proof.
         intros iso.
         induction φ; cbn; intros. { easy. }
@@ -263,16 +315,13 @@ Qed. *)
     Context {Σ_funcs : funcs_signature}.
     Context {Σ_preds : preds_signature}.
 
-    Arguments i_func {_ _ _} _ _ _.
-    Arguments i_atom {_ _ _} _ _ _.
-
     Definition preserve_func_rel {M N: model} (R: M -> N -> Prop) := 
         forall func v, exists v', 
-            R (i_func interp' func v) (i_func interp' func v') /\ map_rel R v v'.
+            R (func f[M] v) (func f[N] v') /\ map_rel R v v'.
 
     Definition preserve_pred_rel {M N: model} (R: M -> N -> Prop) :=
         forall pred v, exists v',
-            ((i_atom interp' pred v) <-> (i_atom interp' pred v')) /\ map_rel R v v'.
+            pred p[M] v <-> pred p[N] v' /\ map_rel R v v'.
 
     Class isomorphism_rel {M N: model} (R: M -> N -> Prop) :=
         {
@@ -366,9 +415,6 @@ Require Import Undecidability.FOL.Completeness.TarskiCompleteness.
 Require Import Undecidability.Synthetic.EnumerabilityFacts.
 From Undecidability.Synthetic Require Import Definitions DecidabilityFacts EnumerabilityFacts ListEnumerabilityFacts ReducibilityFacts.
 
-
-
-
 (* Context {ff : falsity_flag}. *)
 Context {Σf : funcs_signature} {Σp : preds_signature}.
 Context {HdF : eq_dec Σf} {HdP : eq_dec Σp}.
@@ -379,8 +425,6 @@ Context {HeP : enumerator__T eP Σp}.
 
 Definition countable_model M :=
     exists f: nat -> M, surjective f.
-
-Existing Instance falsity_on.
 
 Instance term_model M: model := 
 {
@@ -400,17 +444,67 @@ Proof.
 Qed.
 
 Require Import Undecidability.FOL.Deduction.FragmentND.
+Existing Instance falsity_on.
 
-Hypothesis Hcon_M: forall M: model, consistent class (theory_of_model M).
+Context (M: model).
+Definition input_theory: theory := theory_of_model M.
+Definition output_theory: theory := 
+    Out_T (construct_construction (input_bot (closed_theory_of_model M))).
 
+Hypothesis Hcon_in_M: consistent class input_theory.
+Hypothesis classical_in_M: classical (@interp' _ _ M).
+Hypothesis xm_in_M: forall phi, phi ∈ theory_of_model M \/ ¬ phi ∈ theory_of_model M.
 
-(* Theorem LS_downward (M: model): 
+Corollary Hcon_out_M: consistent class output_theory.
+Proof.
+    intro H.
+    apply Hcon_in_M.
+    apply Out_T_econsistent with 
+        (construct_construction (input_bot (closed_theory_of_model _))); assumption.
+Qed.
+
+Lemma contain_out_in:
+    forall phi, closed phi -> 
+        phi ∈ output_theory -> phi ∈ input_theory.
+Proof.
+    intros φ closed_φ H.
+    split. { assumption. }
+    intro p.
+    destruct (xm_in_M φ) as [[_ H']|[_ H']].
+    exact (H' p).
+    enough (output_theory (¬ φ)).
+    exfalso; apply Hcon_out_M.
+    exists [φ; ¬ φ]; split.
+    intros phi [<-|[<-|]]; easy.
+    eapply IE with (phi := φ).
+    eapply Ctx; now right.
+    eapply Ctx; now left.
+    apply Out_T_sub; split.
+    constructor; eauto; constructor.
+    eassumption.
+Qed.
+
+Theorem LS_downward: 
     exists N: model, countable_model N /\ M ≡ N.
 Proof.
     exists (term_model M).
-Admitted. *)
+    split. {apply term_model_countable. }
+    split; intros.
+    - apply (sat_closed _ p var). { assumption. }    
+      apply model_bot_correct. apply  Hcon_in_M.
+      apply Out_T_sub; cbn.
+      setoid_rewrite subst_var. 
+      unfold theory_of_model; eauto.
+    - apply contain_out_in. { assumption. }
+      setoid_rewrite <- subst_var.
+      apply model_bot_correct.
+      apply Hcon_in_M.
+    eauto.
+Qed.
 
 End CountableModel.
+
+
 
 
 
