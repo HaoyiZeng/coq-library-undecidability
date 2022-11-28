@@ -331,7 +331,6 @@ Qed. *)
             morphism_biject_rel: bijective_rel R
         }.
 
-
 End relation.
 
 Notation "M ≅ᵣ N" := (exists R: M -> N -> Prop, isomorphism_rel R) (at level 30).
@@ -396,7 +395,6 @@ Section rel_facts.
       exact (hp n).
 Admitted.
 
-
     Arguments iso_impl_elementary_rel' {_ _ _ _ _}.
 
 
@@ -419,121 +417,130 @@ Qed.
 
 End rel_facts.
 
+
+(* Will be put in another Doc *)
 Section CountableModel.
-Require Import Undecidability.FOL.Completeness.TarskiCompleteness.
-Require Import Undecidability.Synthetic.EnumerabilityFacts.
-From Undecidability.Synthetic Require Import Definitions DecidabilityFacts EnumerabilityFacts ListEnumerabilityFacts ReducibilityFacts.
-Require Import Undecidability.FOL.Deduction.FragmentND.
-Require Import Undecidability.FOL.Semantics.Tarski.FragmentSoundness.
 
-Context {Σf : funcs_signature} {Σp : preds_signature}.
+    Require Import Undecidability.FOL.Completeness.TarskiCompleteness.
+    Require Import Undecidability.Synthetic.EnumerabilityFacts.
+    From Undecidability.Synthetic Require Import Definitions DecidabilityFacts EnumerabilityFacts ListEnumerabilityFacts ReducibilityFacts.
+    Require Import Undecidability.FOL.Deduction.FragmentND.
+    Require Import Undecidability.FOL.Semantics.Tarski.FragmentSoundness.
 
-(* Proof of countable *)
-Context {HdF : eq_dec Σf} {HdP : eq_dec Σp}.
-Variable eF : nat -> option Σf.
-Context {HeF : enumerator__T eF Σf}.
-Variable eP : nat -> option Σp.
-Context {HeP : enumerator__T eP Σp}.
+    Context {Σf : funcs_signature} {Σp : preds_signature}.
 
-Variable list_Funcs : nat -> list syms.
-Hypothesis enum_Funcs' : list_enumerator__T list_Funcs syms.
+    (* Proof of countable *)
+    Context {HdF : eq_dec Σf} {HdP : eq_dec Σp}.
+    Variable eF : nat -> option Σf.
+    Context {HeF : enumerator__T eF Σf}.
+    Variable eP : nat -> option Σp.
+    Context {HeP : enumerator__T eP Σp}.
 
-Definition countable_model M :=
-    exists f: nat -> M, surjective f.
+    Variable list_Funcs : nat -> list syms.
+    Hypothesis enum_Funcs' : list_enumerator__T list_Funcs syms.
 
-Instance term_model M: model := 
-{
-    domain := term;
-    interp' := model_bot (closed_theory_of_model M)
-}.
+    Definition countable_model M :=
+        exists f: nat -> M, surjective f.
 
-Lemma term_model_countable M: countable_model (term_model M).
-Proof.
-    destruct (enumT_term enum_Funcs') as [f H]. 
-    exists (fun n => match f n with None => var n | Some t => t end).
-    intro t. destruct (H t) as [n eq].
-    exists n. now rewrite eq.
-Qed.
+    Instance term_model M: model := 
+    {
+        domain := term;
+        interp' := model_bot (closed_theory_of_model M)
+    }.
 
-(* Proof of elementary equivalence *)
-Existing Instance falsity_on.
+    Lemma term_model_countable M: countable_model (term_model M).
+    Proof.
+        destruct (enumT_term enum_Funcs') as [f H]. 
+        exists (fun n => match f n with None => var n | Some t => t end).
+        intro t. destruct (H t) as [n eq].
+        exists n. now rewrite eq.
+    Qed.
 
-Variable M: model.
-Hypothesis classical_model: classical interp'.
-Hypothesis noempty: M.
+    (* Proof of elementary equivalence *)
+    Existing Instance falsity_on.
+
+    (* Consider a noemoty classical model *)
+    Variable M: model.
+    Hypothesis classical_model: classical interp'.
+    Hypothesis noempty: M.
 
 
-Definition input_theory: theory := theory_of_model M.
-Definition output_theory: theory := 
-    Out_T (construct_construction (input_bot (closed_theory_of_model M))).
+    Definition input_theory: theory := theory_of_model M.
+    Definition output_theory: theory := 
+        Out_T (construct_construction (input_bot (closed_theory_of_model M))).
 
-Lemma Hcon_in_M: consistent class input_theory.
-Proof.
-    intros H. 
-    enough (M ⊨[_] ⊥).
-    exact (H0 (fun _ => noempty)).
-    destruct H as [L [InL InCon]].
-    intro rho; eapply sound_for_classical_model.
-    exact classical_model. exact InCon.
-    intros s h%(InL s).
-    destruct h as [_ hpo]. 
-    exact (hpo _).
-Qed.
 
-Corollary  Hcon_out_M: consistent class output_theory.
-Proof.
-    intro H; apply Hcon_in_M.
-    apply Out_T_econsistent with 
+    Lemma Hcon_in_M: consistent class input_theory.
+    Proof.
+        intros H. 
+        enough (M ⊨[_] ⊥).
+        exact (H0 (fun _ => noempty)).
+        destruct H as [L [InL InCon]].
+        intro rho; eapply sound_for_classical_model.
+        exact classical_model. exact InCon.
+        intros s h%(InL s).
+        destruct h as [_ hpo]. 
+        exact (hpo _).
+    Qed.
+    (* By Soundness of classical model *)
+
+    Corollary  Hcon_out_M: consistent class output_theory.
+    Proof.
+        intro H; apply Hcon_in_M.
+        apply Out_T_econsistent with 
         (construct_construction (input_bot (closed_theory_of_model _))); assumption.
-Qed.
+    Qed.
 
-Lemma classical_model': forall p φ, (M ⊨[p] ((¬ ¬ φ) → φ)).
-Proof.
-    intros; cbn; intros.
-    apply classical_model with ⊥.
-    intro; exfalso.
-    now apply H.
-Qed.
+    Lemma classical_model': forall p φ, (M ⊨[p] ((¬ ¬ φ) → φ)).
+    Proof.
+        intros; cbn; intros.
+        apply classical_model with ⊥.
+        intro; exfalso.
+        now apply H.
+    Qed.
+    (* A classical proof :) *)
 
-Lemma contain_out_in:
-    forall phi, closed phi -> 
-        phi ∈ output_theory -> phi ∈ input_theory.
-Proof.
-    intros φ closed_φ H.
-    split. { assumption. }
-    intro p.
-    apply classical_model'; intros nphisat.
-    assert (¬ φ ∈ output_theory).
-    assert (closed (¬ φ)).
-    constructor; eauto; constructor.
-    apply Out_T_sub; split; eauto.
-    intro p'; apply (sat_closed _ p p').
-    all: try easy.
-    apply Hcon_out_M.
-    exists [φ; ¬ φ]; split.
-    intros phi [<-|[<-|]]; easy.
-    eapply IE with (phi := φ).
-    eapply Ctx; now right.
-    eapply Ctx; now left.
-Qed.
+    Lemma contain_out_in:
+        forall phi, closed phi -> 
+            phi ∈ output_theory -> phi ∈ input_theory.
+    Proof.
+        intros φ closed_φ H.
+        split. { assumption. }
+        intro p.
+        apply classical_model'; intros nphisat.
+        assert (¬ φ ∈ output_theory).
+        assert (closed (¬ φ)).
+        constructor; eauto; constructor.
+        apply Out_T_sub; split; eauto.
+        intro p'; apply (sat_closed _ p p').
+        all: try easy.
+        apply Hcon_out_M.
+        exists [φ; ¬ φ]; split.
+        intros phi [<-|[<-|]]; easy.
+        eapply IE with (phi := φ).
+        eapply Ctx; now right.
+        eapply Ctx; now left.
+    Qed.
 
-Theorem LS_downward: 
-    exists N: model, countable_model N /\ M ≡ N.
-Proof.
-    exists (term_model M).
-    split. {apply term_model_countable. }
-    split; intros.
-    - apply (sat_closed _ p var). { assumption. }    
-      apply model_bot_correct. apply  Hcon_in_M.
-      apply Out_T_sub; cbn.
-      setoid_rewrite subst_var. 
-      unfold theory_of_model; eauto.
-    - apply contain_out_in. { assumption. }
-      setoid_rewrite <- subst_var.
-      apply model_bot_correct.
-      apply Hcon_in_M.
-    eauto.
-Qed.
+    (*  For any noempty and classical model M, there exists a countable term
+        model which is elementary equivalence to M, whenever the signature is 
+        at most countable. 
+    *)
+    Theorem LS_downward: 
+        exists N: model, countable_model N /\ M ≡ N.
+    Proof.
+        exists (term_model M).
+        split. {apply term_model_countable. }
+        split; intros.
+        - apply (sat_closed _ p var). { assumption. }
+          apply valid_T_model_bot. apply Hcon_in_M.
+          unfold "∈", theory_of_model; eauto.
+        - apply contain_out_in. { assumption. }
+          setoid_rewrite <- subst_var.
+          apply model_bot_correct.
+          apply Hcon_in_M.
+          eauto.
+    Qed.
 
 End CountableModel.
 
