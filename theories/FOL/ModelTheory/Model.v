@@ -30,7 +30,7 @@ Section model.
     interp' : interp domain
     }.
 
-Coercion domain : model >-> Sortclass.
+    Coercion domain : model >-> Sortclass.
 
 End model.
 
@@ -38,6 +38,7 @@ End model.
 Arguments i_func {_ _} _ _ _ _.
 Arguments i_atom {_ _} _ _ _ _.
 Arguments interp' {_ _} _, {_ _ _}.
+(* A interface s.t. interp' can be used as interp *)
 Arguments eval {_ _}.
 Notation "func f[ M ] v" := (i_func M (interp' M) func v) (at level 19).
 (* 
@@ -321,7 +322,7 @@ Qed. *)
 
     Definition preserve_pred_rel {M N: model} (R: M -> N -> Prop) :=
         forall pred v, exists v',
-            pred p[M] v <-> pred p[N] v' /\ map_rel R v v'.
+            (pred p[M] v <-> pred p[N] v') /\ map_rel R v v'.
 
     Class isomorphism_rel {M N: model} (R: M -> N -> Prop) :=
         {
@@ -338,38 +339,45 @@ Notation "M ≅ᵣ N" := (exists R: M -> N -> Prop, isomorphism_rel R) (at level
 Section rel_facts.
 
     Require Export Undecidability.FOL.Semantics.Tarski.FragmentFacts.
+    Import Coq.Vectors.Vector.
+    Local Notation vec := t.
 
     Context {Σ_funcs : funcs_signature}.
     Context {Σ_preds : preds_signature}.
     Context {ff : falsity_flag}.
     Arguments eval {_ _ _}.
 
-(*
+    Fact function_rel_map {X Y} (R: X -> Y -> Prop) {n: nat} (v1: vec X n) (v2 v2': vec Y n):
+        function_rel R -> map_rel R v1 v2 -> map_rel R v1 v2' -> v2 = v2'.
+    Proof.
+        admit.
+    Admitted.
+
 
     Lemma term_preserved_rel {M N: model} {ρ ρ'} (R: M -> N -> Prop) : 
        (forall x: nat, R (ρ x) (ρ' x))
     -> preserve_func_rel R
-    -> forall t: term, R (eval interp' ρ t) (eval interp' ρ' t).
+    -> forall t: term, R (t t[M] ρ) (t t[N] ρ').
     Proof.
       intros Heq pf.
       induction t; cbn. easy.
       destruct (pf _ (map (eval interp' ρ) v)) as [v' [H Rvv']].
+
       admit.
     Admitted.
 
     Lemma iso_impl_elementary_rel' {M N: model} (R: M -> N -> Prop): 
         isomorphism_rel R 
         -> forall φ ρ ρ', (forall x, R (ρ x) (ρ' x))
-        -> sat interp' ρ φ <-> sat interp' ρ' φ.
+        -> M ⊨[ρ] φ <-> N ⊨[ρ'] φ.
     Proof.
-    intros iso.
-    induction φ; cbn; intros. { easy. }
+      intros iso.
+      induction φ; cbn; intros. { easy. }
     (* - rewrite (pred_strong_preserved (map (eval _ ρ) t)), map_map.
       now rewrite (map_ext _ _ _ _ (term_preserved H func_preserved)). *)
-    - destruct (pred_preserved_rel (map (eval interp' ρ) t) ) as [t' [IH Rt]]. 
-      enough (t' = (map (eval interp' ρ') t)).
-      rewrite <- H0.
-      assumption.
+    - destruct (pred_preserved_rel (map (eval interp' ρ) t) ) as [v' [IH Rt]]. 
+      enough (v' = (map (eval interp' ρ') t)).
+      rewrite <- H0; assumption.
       admit.
     - destruct b0. rewrite (IHφ1 _ _ H), (IHφ2 _ _ H). easy.
     - destruct q. split; intros hp d. 
@@ -391,10 +399,11 @@ Admitted.
 
     Arguments iso_impl_elementary_rel' {_ _ _ _ _}.
 
+
     Theorem iso_impl_elementary_rel {M N: model}: 
     M ≅ᵣ N -> M ≡ N.
     Proof.
-      intros [R iso] phi; split; intros [cphi satphi]; split; try easy; intro env.
+      intros [h iso] phi cphi. split; try easy; intros asup env.
     - destruct morphism_biject_rel as [[func total] [inj sur]].
       destruct (sur (env O)) as [m _].
       destruct (total m) as [n Rmn].
@@ -406,7 +415,7 @@ Admitted.
       apply (sat_closed _ _ (fun _ => m) cphi).
       now apply (iso_impl_elementary_rel' (fun _ => m) (fun _ => n)).
 Qed.
-*)
+
 
 End rel_facts.
 
@@ -414,14 +423,20 @@ Section CountableModel.
 Require Import Undecidability.FOL.Completeness.TarskiCompleteness.
 Require Import Undecidability.Synthetic.EnumerabilityFacts.
 From Undecidability.Synthetic Require Import Definitions DecidabilityFacts EnumerabilityFacts ListEnumerabilityFacts ReducibilityFacts.
+Require Import Undecidability.FOL.Deduction.FragmentND.
+Require Import Undecidability.FOL.Semantics.Tarski.FragmentSoundness.
 
-(* Context {ff : falsity_flag}. *)
 Context {Σf : funcs_signature} {Σp : preds_signature}.
+
+(* Proof of countable *)
 Context {HdF : eq_dec Σf} {HdP : eq_dec Σp}.
 Variable eF : nat -> option Σf.
 Context {HeF : enumerator__T eF Σf}.
 Variable eP : nat -> option Σp.
 Context {HeP : enumerator__T eP Σp}.
+
+Variable list_Funcs : nat -> list syms.
+Hypothesis enum_Funcs' : list_enumerator__T list_Funcs syms.
 
 Definition countable_model M :=
     exists f: nat -> M, surjective f.
@@ -432,9 +447,6 @@ Instance term_model M: model :=
     interp' := model_bot (closed_theory_of_model M)
 }.
 
-Variable list_Funcs : nat -> list syms.
-Hypothesis enum_Funcs' : list_enumerator__T list_Funcs syms.
-
 Lemma term_model_countable M: countable_model (term_model M).
 Proof.
     destruct (enumT_term enum_Funcs') as [f H]. 
@@ -443,24 +455,44 @@ Proof.
     exists n. now rewrite eq.
 Qed.
 
-Require Import Undecidability.FOL.Deduction.FragmentND.
+(* Proof of elementary equivalence *)
 Existing Instance falsity_on.
 
-Context (M: model).
+Variable M: model.
+Hypothesis classical_model: classical interp'.
+Hypothesis noempty: M.
+
+
 Definition input_theory: theory := theory_of_model M.
 Definition output_theory: theory := 
     Out_T (construct_construction (input_bot (closed_theory_of_model M))).
 
-Hypothesis Hcon_in_M: consistent class input_theory.
-Hypothesis classical_in_M: classical (@interp' _ _ M).
-Hypothesis xm_in_M: forall phi, phi ∈ theory_of_model M \/ ¬ phi ∈ theory_of_model M.
-
-Corollary Hcon_out_M: consistent class output_theory.
+Lemma Hcon_in_M: consistent class input_theory.
 Proof.
-    intro H.
-    apply Hcon_in_M.
+    intros H. 
+    enough (M ⊨[_] ⊥).
+    exact (H0 (fun _ => noempty)).
+    destruct H as [L [InL InCon]].
+    intro rho; eapply sound_for_classical_model.
+    exact classical_model. exact InCon.
+    intros s h%(InL s).
+    destruct h as [_ hpo]. 
+    exact (hpo _).
+Qed.
+
+Corollary  Hcon_out_M: consistent class output_theory.
+Proof.
+    intro H; apply Hcon_in_M.
     apply Out_T_econsistent with 
         (construct_construction (input_bot (closed_theory_of_model _))); assumption.
+Qed.
+
+Lemma classical_model': forall p φ, (M ⊨[p] ((¬ ¬ φ) → φ)).
+Proof.
+    intros; cbn; intros.
+    apply classical_model with ⊥.
+    intro; exfalso.
+    now apply H.
 Qed.
 
 Lemma contain_out_in:
@@ -470,18 +502,19 @@ Proof.
     intros φ closed_φ H.
     split. { assumption. }
     intro p.
-    destruct (xm_in_M φ) as [[_ H']|[_ H']].
-    exact (H' p).
-    enough (output_theory (¬ φ)).
-    exfalso; apply Hcon_out_M.
+    apply classical_model'; intros nphisat.
+    assert (¬ φ ∈ output_theory).
+    assert (closed (¬ φ)).
+    constructor; eauto; constructor.
+    apply Out_T_sub; split; eauto.
+    intro p'; apply (sat_closed _ p p').
+    all: try easy.
+    apply Hcon_out_M.
     exists [φ; ¬ φ]; split.
     intros phi [<-|[<-|]]; easy.
     eapply IE with (phi := φ).
     eapply Ctx; now right.
     eapply Ctx; now left.
-    apply Out_T_sub; split.
-    constructor; eauto; constructor.
-    eassumption.
 Qed.
 
 Theorem LS_downward: 
