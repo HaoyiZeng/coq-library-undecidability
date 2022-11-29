@@ -544,6 +544,34 @@ Section CountableModel.
 
 End CountableModel.
 
+Section HeinkinModel.
+
+    Context {Σf : funcs_signature} {Σp : preds_signature}.
+    Existing Instance falsity_on.
+    Variable M: model.
+    Hypothesis henkin_sat: forall φ, M ⊨[_] (henkin_axiom φ).
+    Hypothesis classical_model: classical (interp' M).
+    Hypothesis nonempty: M.
+(* M satify henkin axiom and M is a classical model
+ *)
+
+    Instance model_bot : interp term :=
+        {| i_func := func; i_atom := fun P v => atom P v ∈ (theory_of_model M)|}.
+
+    Instance model_bot': model :=
+        {| domain := term; interp' := model_bot|}.
+
+    Hypothesis ρ: nat -> M.
+
+    Theorem LS_downward':
+        exists (N: model) (h: N -> M), elementary_homormophism h.
+    Proof.
+        exists model_bot'; cbn.
+        exists (eval M (interp' M) ρ).
+        unfold elementary_homormophism.
+        intros.
+    Admitted.
+    
 
 
 
