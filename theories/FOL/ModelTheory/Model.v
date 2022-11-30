@@ -567,9 +567,7 @@ Section HeinkinModel.
         exists (N: model) (h: N -> M), elementary_homormophism h.
     Proof.
         exists model_bot'; cbn.
-        exists (eval M (interp' M) ρ).
-        unfold elementary_homormophism.
-        intros.
+        exists (fun t: term => t t[M] ρ); cbn.
     Admitted.
     
 
