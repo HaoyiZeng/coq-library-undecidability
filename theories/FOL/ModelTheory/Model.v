@@ -341,31 +341,48 @@ Section rel_facts.
     Import Coq.Vectors.Vector.
     Local Notation vec := t.
 
+
     Context {Σ_funcs : funcs_signature}.
     Context {Σ_preds : preds_signature}.
     Context {ff : falsity_flag}.
     Arguments eval {_ _ _}.
+    Require Import Coq.Program.Equality.
 
     Fact function_rel_map {X Y} (R: X -> Y -> Prop) {n: nat} (v1: vec X n) (v2 v2': vec Y n):
         function_rel R -> map_rel R v1 v2 -> map_rel R v1 v2' -> v2 = v2'.
     Proof.
-        admit.
-    Admitted.
+        intros H1 H2.
+        dependent induction H2; dependent destruction v2'; try easy.
+        - intros.
+          specialize (IHmap_rel v2').
+          rewrite IHmap_rel.
+          enough (y = h).
+          rewrite H3. easy.
+          dependent destruction H0.
+          eapply H1 . exact H. easy.
+          dependent destruction H0; eassumption.
+    Qed.
 
 
     Lemma term_preserved_rel {M N: model} {ρ ρ'} (R: M -> N -> Prop) : 
        (forall x: nat, R (ρ x) (ρ' x))
+    -> isomorphism_rel R 
     -> preserve_func_rel R
     -> forall t: term, R (t t[M] ρ) (t t[N] ρ').
     Proof.
-      intros Heq pf.
+      intros Heq iso pf.
       induction t; cbn. easy.
-      destruct (pf _ (map (eval interp' ρ) v)) as [v' [H Rvv']].
-
+      destruct (pf _ (map (eval interp' ρ) v)) as [v' [H Rvv']]; cbn.
+      assert (v' = (map (eval interp' ρ') v)).
+      eapply function_rel_map.
+      destruct iso as [_ _ [h _]].
+      exact h.
+      exact Rvv'.
       admit.
+      rewrite <- H0; easy.
     Admitted.
 
-    Lemma iso_impl_elementary_rel' {M N: model} (R: M -> N -> Prop): 
+    Lemma iso_impl_elementary_rel' `{falsity_flag} {M N: model} (R: M -> N -> Prop): 
         isomorphism_rel R 
         -> forall φ ρ ρ', (forall x, R (ρ x) (ρ' x))
         -> M ⊨[ρ] φ <-> N ⊨[ρ'] φ.
@@ -377,6 +394,10 @@ Section rel_facts.
     - destruct (pred_preserved_rel (map (eval interp' ρ) t) ) as [v' [IH Rt]]. 
       enough (v' = (map (eval interp' ρ') t)).
       rewrite <- H0; assumption.
+      eapply function_rel_map.
+      destruct iso as [_ _ [h _]].
+      exact h.
+      exact Rt.
       admit.
     - destruct b0. rewrite (IHφ1 _ _ H), (IHφ2 _ _ H). easy.
     - destruct q. split; intros hp d. 
@@ -406,13 +427,15 @@ Admitted.
       destruct (sur (env O)) as [m _].
       destruct (total m) as [n Rmn].
       apply (sat_closed _ _ (fun _ => n) cphi).
-      now apply (iso_impl_elementary_rel' (fun _ => m) (fun _ => n)).
+      admit.
+      (* now apply (iso_impl_elementary_rel' (fun _ => m) (fun _ => n)). *)
     - destruct morphism_biject_rel as [[func total] [inj sur]].
       destruct (total (env O)) as [n _].
       destruct (sur n) as [m Rnm].
       apply (sat_closed _ _ (fun _ => m) cphi).
-      now apply (iso_impl_elementary_rel' (fun _ => m) (fun _ => n)).
-Qed.
+      admit. 
+      (* now apply (iso_impl_elementary_rel' (fun _ => m) (fun _ => n)). *)
+Admitted.
 
 
 End rel_facts.
@@ -544,31 +567,92 @@ Section CountableModel.
 
 End CountableModel.
 
-Section HeinkinModel.
+Section HenkinModel.
+    Require Import Undecidability.FOL.Syntax.Facts.
 
     Context {Σf : funcs_signature} {Σp : preds_signature}.
     Existing Instance falsity_on.
-    Variable M: model.
-    Hypothesis henkin_sat: forall φ, M ⊨[_] (henkin_axiom φ).
+
+    Variable M: model. 
     Hypothesis classical_model: classical (interp' M).
     Hypothesis nonempty: M.
-(* M satify henkin axiom and M is a classical model
- *)
+    (* A classical and nonempty model *)
 
-    Instance model_bot : interp term :=
-        {| i_func := func; i_atom := fun P v => atom P v ∈ (theory_of_model M)|}.
+    Variable enum_phi : nat -> form.
+    Hypothesis He : forall phi, exists n, enum_phi n = phi.
+    Variable index_wit: env term.
+    Hypothesis ρ_henkin_sat: 
+        forall h n, M ⊨[h] (henkin_axiom (enum_phi n))[(index_wit n)..].
+    (* which satify the henkin axioms for any formulas (in syntax level) *)
 
-    Instance model_bot': model :=
-        {| domain := term; interp' := model_bot|}.
+    Definition homo: env M :=
+        fun n => (index_wit n) t[M] (fun _ => nonempty).
+    (* 
+        Consider then env that map $0 to the witness of φ_n
+        This env existst when the model satify the witness property
+    *)
 
-    Hypothesis ρ: nat -> M.
+    Definition theory_under_homo: theory :=
+        fun phi => M ⊨[homo] phi.
+
+    Instance interp_bot: interp term :=
+        {| i_func := func; i_atom := fun P v => atom P v ∈ theory_under_homo|}.
+
+    Instance model_bot: model :=
+        {| domain := term; interp' := interp_bot|}.
+
+    (* The henkin model which (h n) ≡ ($ n) for working without closed *)
 
     Theorem LS_downward':
         exists (N: model) (h: N -> M), elementary_homormophism h.
     Proof.
-        exists model_bot'; cbn.
-        exists (fun t: term => t t[M] ρ); cbn.
+        exists model_bot, (eval _ (interp' M) homo); cbn.
+        unfold elementary_homormophism; cbn.
+        intros φ ρ.
+        induction φ.
+        - easy.
+        - admit.
+        - destruct b0; cbn. firstorder.
+        - destruct q. admit.
     Admitted.
+End HenkinModel.
+
+Section DC.
+
+    Context {Σf : funcs_signature} {Σp : preds_signature}.
+    Existing Instance falsity_on.
+
+    Variable M: model. 
+    Hypothesis classical_model: classical (interp' M).
+    Hypothesis nonempty: M.
+    (* A classical and nonempty model *)
+
+    
+    Variable enum_phi : nat -> form.
+    Hypothesis He : forall phi, exists n, enum_phi n = phi.
+    Variable index_wit: nat -> option term.
+    (* Maybe with the countable choice? We have *)
+    Hypothesis withDC:
+        forall n, match index_wit n with
+            | None => True
+            | Some t => forall h n, M ⊨[h] (henkin_axiom (enum_phi n))[t..]
+            end.
+    Variable inaccessible: M.
+    Definition homo': env M :=
+        fun n => match index_wit n with
+            | None => inaccessible
+            | Some t => t t[M] (fun _ => nonempty)
+            end.
+
+    Theorem LS_downward'':
+        exists (N: model) (h: N -> M), elementary_homormophism h.
+    Proof.
+    Admitted.
+
+    
+End DC.
+
+
     
 
 
