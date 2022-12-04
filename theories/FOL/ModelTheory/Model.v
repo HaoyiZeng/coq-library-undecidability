@@ -177,6 +177,7 @@ End Elementary.
 
 
 Notation "M ≡ N" := (elementary_equivalence M N) (at level 30).
+Notation "N ⪳ M" := (exists h: N -> M, elementary_homormophism h) (at level 30).
 
 
 Arguments closed_theory_of_model {_ _ _} _.
@@ -471,7 +472,7 @@ Section CountableModel.
         interp' := model_bot (closed_theory_of_model M)
     }.
 
-    Lemma term_model_countable M: countable_model (term_model M).
+    Lemma term_model_countable: countable_model term.
     Proof.
         destruct (enumT_term enum_Funcs') as [f H]. 
         exists (fun n => match f n with None => var n | Some t => t end).
@@ -571,50 +572,100 @@ Section HenkinModel.
     Require Import Undecidability.FOL.Syntax.Facts.
 
     Context {Σf : funcs_signature} {Σp : preds_signature}.
-    Existing Instance falsity_on.
 
+    (* Proof of countable *)
+    Context {HdF : eq_dec Σf} {HdP : eq_dec Σp}.
+    Variable eF : nat -> option Σf.
+    Context {HeF : enumerator__T eF Σf}.
+    Variable eP : nat -> option Σp.
+    Context {HeP : enumerator__T eP Σp}.
+    Variable list_Funcs : nat -> list syms.
+    Hypothesis enum_Funcs' : list_enumerator__T list_Funcs syms.
+
+    Existing Instance falsity_on.    
+
+(* A nonempty model *)
     Variable M: model. 
-    Hypothesis classical_model: classical (interp' M).
     Hypothesis nonempty: M.
-    (* A classical and nonempty model *)
 
+(* which satify the henkin axioms for any formulas (in syntax level) *)
     Variable enum_phi : nat -> form.
     Hypothesis He : forall phi, exists n, enum_phi n = phi.
     Variable index_wit: env term.
     Hypothesis ρ_henkin_sat: 
         forall h n, M ⊨[h] (henkin_axiom (enum_phi n))[(index_wit n)..].
-    (* which satify the henkin axioms for any formulas (in syntax level) *)
+    Hypothesis ρ_henkin_sat': 
+        forall n h, M ⊨[h] ((enum_phi n)[(index_wit n)..] → (enum_phi n)).
 
-    Definition homo: env M :=
-        fun n => (index_wit n) t[M] (fun _ => nonempty).
     (* 
-        Consider then env that map $0 to the witness of φ_n
-        This env existst when the model satify the witness property
+      Consider the env that map $n to the witness of φ_n
+      This env existst when the model satify the witness property
     *)
+    Definition h: env M :=
+        fun n => (index_wit n) t[M] (fun _ => nonempty).
 
-    Definition theory_under_homo: theory :=
-        fun phi => M ⊨[homo] phi.
+    Definition morphism: term -> M := eval M interp' h.
 
-    Instance interp_bot: interp term :=
-        {| i_func := func; i_atom := fun P v => atom P v ∈ theory_under_homo|}.
-
-    Instance model_bot: model :=
-        {| domain := term; interp' := interp_bot|}.
+    Definition theory_under h: theory :=
+        fun phi => M ⊨[h] phi.
 
     (* The henkin model which (h n) ≡ ($ n) for working without closed *)
+    Instance interp_term: interp term :=
+        {| i_func := func; i_atom := fun P v => atom P v ∈ theory_under h|}.
 
-    Theorem LS_downward':
-        exists (N: model) (h: N -> M), elementary_homormophism h.
+    Instance N: model :=
+        { domain := term; interp' := interp_term }.
+
+    Lemma eval_eval (ρ: env term) (tm: term):
+        (tm t[N] ρ) t[M] h = 
+                 tm t[M] (fun x => (ρ x) t[M] h). 
     Proof.
-        exists model_bot, (eval _ (interp' M) homo); cbn.
-        unfold elementary_homormophism; cbn.
-        intros φ ρ.
-        induction φ.
-        - easy.
-        - admit.
-        - destruct b0; cbn. firstorder.
-        - destruct q. admit.
+          induction tm; try easy. 
+          cbn. apply f_equal; rewrite map_map; apply map_ext_in.
+          intro a. now apply IH.
+    Qed.
+
+    Lemma map_eval_eval (ρ: env term) {n} (v: t term n):
+            map (fun tm => (tm t[N] ρ) t[M] h) v =
+            map (fun tm => tm t[M] (fun x => (ρ x) t[M] h)) v.
+    Proof.
+        apply map_ext. apply eval_eval.
+    Qed.
+
+    Theorem LS_downward' :
+        exists (N: model), countable_model N /\ N ⪳ M.
+    Proof.
+        exists N.
+        split. {eapply term_model_countable. exact enum_Funcs'. }
+        exists morphism; intros φ. 
+        induction φ using form_ind_falsity; intro; try easy. 
+        - cbn; rewrite map_map. 
+          now rewrite map_eval_eval.
+        - destruct b0; cbn. 
+          split; intros; apply IHφ2; apply H; now apply IHφ1.
+        - destruct q; split.
+          + intros.
+            destruct (He (∀ φ)) as [n φn].
+            cbn in H. specialize (H ($ n)).
+            apply IHφ in H.
+            assert (M ⊨[(morphism $ n .: ρ >> morphism) ] φ).
+            revert H; apply sat_ext; induction x; easy.
+            specialize (@ρ_henkin_sat' n).
+            rewrite φn in ρ_henkin_sat'.
+            cbn in ρ_henkin_sat'.
+            cbn.
+            apply ρ_henkin_sat'.
+            intro.
+            unfold morphism in H0.
+            unfold up.
+            admit.
+          + cbn. intros H d.
+            rewrite (IHφ (d.:ρ)).
+            specialize (H (morphism d)).
+            revert H; apply sat_ext.
+            induction x; easy.
     Admitted.
+
 End HenkinModel.
 
 Section DC.
