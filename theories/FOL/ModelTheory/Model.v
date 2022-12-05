@@ -593,7 +593,7 @@ Section HenkinModel.
     Hypothesis He : forall phi, exists n, enum_phi n = phi.
     Variable index_wit: env term.
     Hypothesis ρ_henkin_sat: 
-        forall h n, M ⊨[h] (henkin_axiom (enum_phi n))[(index_wit n)..].
+        forall n h, M ⊨[h] (henkin_axiom (enum_phi n))[(index_wit n)..].
     Hypothesis ρ_henkin_sat': 
         forall n h, M ⊨[h] ((enum_phi n)[(index_wit n)..] → (enum_phi n)).
 
@@ -668,7 +668,7 @@ Section HenkinModel.
 
 End HenkinModel.
 
-Section DC.
+(* Section DC.
 
     Context {Σf : funcs_signature} {Σp : preds_signature}.
     Existing Instance falsity_on.
@@ -701,21 +701,28 @@ Section DC.
     Admitted.
 
     
-End DC.
+End DC. *)
 
 
-    
+(* Section Final.
 
+    (* 
+        Upward will change the signature 
+        Then given the model over this new signature
+        Downward can provide the term model over term
+        wich has the same cardinality as X.
+    *)
 
+    Context {Σf : funcs_signature} {Σp : preds_signature}.
+    Existing Instance falsity_on.
+    Definition has_same_card N M := exists g: N -> M, bijective g.
+    Definition infinite X := exists f: nat -> X, injective f. 
+    Hypothesis LS_weaker: 
+        forall (M: model) X (f: X -> M), injective f -> infinite X ->
+            exists N: model, N ≡ M /\ has_same_card N X.
 
+    Hypothesis LS_stronger: 
+        forall (M: model) X (f: X -> M), injective f -> infinite X ->
+            exists N: model, N ⪳ M /\ has_same_card N X.
 
-      
-
-
-
-
-
-
-
-
-
+End Final. *)
