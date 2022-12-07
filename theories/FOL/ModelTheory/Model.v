@@ -573,15 +573,6 @@ Section HenkinModel.
 
     Context {Σf : funcs_signature} {Σp : preds_signature}.
 
-    (* Proof of countable *)
-    Context {HdF : eq_dec Σf} {HdP : eq_dec Σp}.
-    Variable eF : nat -> option Σf.
-    Context {HeF : enumerator__T eF Σf}.
-    Variable eP : nat -> option Σp.
-    Context {HeP : enumerator__T eP Σp}.
-    Variable list_Funcs : nat -> list syms.
-    Hypothesis enum_Funcs' : list_enumerator__T list_Funcs syms.
-
     Existing Instance falsity_on.    
 
 (* A nonempty model *)
@@ -593,9 +584,7 @@ Section HenkinModel.
     Hypothesis He : forall phi, exists n, enum_phi n = phi.
     Variable index_wit: env term.
     Hypothesis ρ_henkin_sat: 
-        forall n h, M ⊨[h] (henkin_axiom (enum_phi n))[(index_wit n)..].
-    Hypothesis ρ_henkin_sat': 
-        forall n h, M ⊨[h] ((enum_phi n)[(index_wit n)..] → (enum_phi n)).
+        forall n σ, M ⊨[σ] (henkin_axiom (enum_phi n))[(index_wit n)..].
 
     (* 
       Consider the env that map $n to the witness of φ_n
@@ -632,33 +621,16 @@ Section HenkinModel.
         apply map_ext. apply eval_eval.
     Qed.
 
-    Theorem LS_downward' :
-        exists (N: model), countable_model N /\ N ⪳ M.
+    Theorem LS_downward': exists (N: model), N ⪳ M.
     Proof.
-        exists N.
-        split. {eapply term_model_countable. exact enum_Funcs'. }
-        exists morphism; intros φ. 
+        exists N, morphism; intros φ. 
         induction φ using form_ind_falsity; intro; try easy. 
         - cbn; rewrite map_map. 
           now rewrite map_eval_eval.
         - destruct b0; cbn. 
           split; intros; apply IHφ2; apply H; now apply IHφ1.
         - destruct q; split.
-          + intros.
-            destruct (He (∀ φ)) as [n φn].
-            cbn in H. specialize (H ($ n)).
-            apply IHφ in H.
-            assert (M ⊨[(morphism $ n .: ρ >> morphism) ] φ).
-            revert H; apply sat_ext; induction x; easy.
-            specialize (@ρ_henkin_sat' n).
-            rewrite φn in ρ_henkin_sat'.
-            cbn in ρ_henkin_sat'.
-            cbn.
-            apply ρ_henkin_sat'.
-            intro.
-            unfold morphism in H0.
-            unfold up.
-            admit.
+          + admit.
           + cbn. intros H d.
             rewrite (IHφ (d.:ρ)).
             specialize (H (morphism d)).
