@@ -591,10 +591,10 @@ Section HenkinModel.
     Variable phi_ : nat -> form.
     Hypothesis Hphi : forall phi, exists n, phi_ n = phi.
     Variable wit_: env term.
-    Hypothesis ρ_henkin_sat: 
-        forall n σ, M ⊨[σ] (henkin_axiom (phi_ n))[(wit_ n)..].
     Hypothesis witness_of: 
         forall n σ, M ⊨[σ] (((phi_ n)[(wit_ n)..]) → ∀ (phi_ n)).
+    Hypothesis witness_closed:
+        forall n, bounded_t 0 (wit_ n).
 
     (* 
       Consider the env that map $n to the witness of φ_n
@@ -631,6 +631,13 @@ Section HenkinModel.
         apply map_ext. apply eval_eval.
     Qed.
 
+    Lemma wit_undep ρ ρ' i: eval M interp' ρ (wit_ i) = eval M interp' ρ' (wit_ i).
+    Proof.
+        eapply bounded_eval_t with 0, witness_closed.
+        lia. 
+    Qed.
+
+
     Theorem LS_downward': exists (N: model), N ⪳ M.
     Proof.
         exists N, morphism; intros φ. 
@@ -640,31 +647,23 @@ Section HenkinModel.
         - destruct b0; cbn. 
           split; intros; apply IHφ2; apply H; now apply IHφ1.
         - destruct q; split.
-          + cbn. intro.
+          + cbn. intros.
             destruct (Hphi φ) as [i phi].
             specialize (H (var i)).
             apply IHφ in H.
-            specialize (@ρ_henkin_sat i).
-            unfold henkin_axiom in ρ_henkin_sat.
-            rewrite phi in ρ_henkin_sat.
-
             specialize (@witness_of i).
             rewrite phi in witness_of.
-            intro d.
             eapply witness_of; cbn.
             change (M ⊨[ρ >> morphism] φ[(wit_ i)..]).
-            admit.
-
-
-
-            
-            
+            revert H; setoid_rewrite sat_comp; cbn.
+            eapply sat_ext.
+            induction x. apply wit_undep. easy.
           + cbn. intros H d.
             rewrite (IHφ (d.:ρ)).
             specialize (H (morphism d)).
             revert H; apply sat_ext.
             induction x; easy.
-    Admitted.
+    Qed.
 
 End HenkinModel.
 
