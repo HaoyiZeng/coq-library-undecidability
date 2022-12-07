@@ -444,6 +444,14 @@ End rel_facts.
 
 (* Will be put in another Doc *)
 Section CountableModel.
+(* In the section, the LS downward theorem theorem is shown 
+   by henkin construction. We assume that the model M is non-empty and classical, 
+   so this is basically a simple application of the model existing.
+
+   Result:
+   ∀ M: model, ∃ N: model, M ≡ N and N is countable
+
+*)
 
     Require Import Undecidability.FOL.Completeness.TarskiCompleteness.
     Require Import Undecidability.Synthetic.EnumerabilityFacts.
@@ -580,18 +588,20 @@ Section HenkinModel.
     Hypothesis nonempty: M.
 
 (* which satify the henkin axioms for any formulas (in syntax level) *)
-    Variable enum_phi : nat -> form.
-    Hypothesis He : forall phi, exists n, enum_phi n = phi.
-    Variable index_wit: env term.
+    Variable phi_ : nat -> form.
+    Hypothesis Hphi : forall phi, exists n, phi_ n = phi.
+    Variable wit_: env term.
     Hypothesis ρ_henkin_sat: 
-        forall n σ, M ⊨[σ] (henkin_axiom (enum_phi n))[(index_wit n)..].
+        forall n σ, M ⊨[σ] (henkin_axiom (phi_ n))[(wit_ n)..].
+    Hypothesis witness_of: 
+        forall n σ, M ⊨[σ] (((phi_ n)[(wit_ n)..]) → ∀ (phi_ n)).
 
     (* 
       Consider the env that map $n to the witness of φ_n
       This env existst when the model satify the witness property
     *)
     Definition h: env M :=
-        fun n => (index_wit n) t[M] (fun _ => nonempty).
+        fun n => (wit_ n) t[M] (fun _ => nonempty).
 
     Definition morphism: term -> M := eval M interp' h.
 
@@ -630,7 +640,25 @@ Section HenkinModel.
         - destruct b0; cbn. 
           split; intros; apply IHφ2; apply H; now apply IHφ1.
         - destruct q; split.
-          + admit.
+          + cbn. intro.
+            destruct (Hphi φ) as [i phi].
+            specialize (H (var i)).
+            apply IHφ in H.
+            specialize (@ρ_henkin_sat i).
+            unfold henkin_axiom in ρ_henkin_sat.
+            rewrite phi in ρ_henkin_sat.
+
+            specialize (@witness_of i).
+            rewrite phi in witness_of.
+            intro d.
+            eapply witness_of; cbn.
+            change (M ⊨[ρ >> morphism] φ[(wit_ i)..]).
+            admit.
+
+
+
+            
+            
           + cbn. intros H d.
             rewrite (IHφ (d.:ρ)).
             specialize (H (morphism d)).
