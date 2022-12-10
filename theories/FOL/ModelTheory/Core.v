@@ -36,7 +36,7 @@ Arguments interp' {_ _} _, {_ _ _}.
    v: vec M (sys_ar func) 
     : M
 *)
-Notation "func f[ M ] v" := (i_func M (interp' M) func v) (at level 19).
+Notation "func ₕ[ M ] v" := (i_func _ (interp' M) func v) (at level 19).
 
 (* Evaluate predicate in model M with argument v
    pred: Σ_preds
@@ -44,7 +44,7 @@ Notation "func f[ M ] v" := (i_func M (interp' M) func v) (at level 19).
    v: vec M (sys_ar [pred]) 
     : Prop
 *)
-Notation "pred p[ M ] v" := (i_atom M (interp' M) pred v) (at level 19).
+Notation "pred ₚ[ M ] v" := (i_atom _ (interp' M) pred v) (at level 19).
 
 (* Evaluate term in model M under environment env
    term: term
@@ -52,7 +52,7 @@ Notation "pred p[ M ] v" := (i_atom M (interp' M) pred v) (at level 19).
    env: nat → M
     : Prop
 *)
-Notation "term t[ M ] env" := (eval M (interp' M) env term) (at level 19).
+Notation "term ₜ[ M ] env" := (eval _ (interp' M) env term) (at level 19).
 
 (* 
     M : model
@@ -60,7 +60,7 @@ Notation "term t[ M ] env" := (eval M (interp' M) env term) (at level 19).
         : (nat -> M) -> Prop
     ∀ env, Model ⊨[env] formula
 *)
-Notation "M ⊨[_] phi" := (forall p, sat (interp' M) p phi) (at level 21).
+Notation "Model ⊨[_] phi" := (forall p, sat (interp' Model) p phi) (at level 21).
 
 (* 
     M: model
@@ -69,7 +69,7 @@ Notation "M ⊨[_] phi" := (forall p, sat (interp' M) p phi) (at level 21).
         : Prop
     Model ⊨[env] formula
 *)
-Notation "M ⊨[ ρ ] phi" := (sat (interp' M) ρ phi) (at level 21).
+Notation "Model ⊨[ ρ ] phi" := (sat (interp' Model) ρ phi) (at level 21).
 
 
 Section Isomorphism.
@@ -78,15 +78,15 @@ Section Isomorphism.
 
     Definition preserve_func {M N: model} (h: M -> N) := 
         forall func v, 
-            h (func f[M] v) = func f[N] (map h v).
+            h (func ₕ[M] v) = func ₕ[N] (map h v).
 
     Definition preserve_pred {M N: model} (h: M -> N) :=
         forall pred v,
-            pred p[M] v -> pred p[N] (map h v).
+            pred  ₚ[M] v -> pred ₚ[N] (map h v).
         
     Definition strong_preserve_pred {M N: model} (h: M -> N) :=
         forall pred v,
-            pred p[M] v <-> pred p[N] (map h v).
+            pred ₚ[M] v <-> pred ₚ[N] (map h v).
 
     Definition injective {M N} (f: M -> N) :=
         forall n m, f n = f m -> n = m.
@@ -172,11 +172,11 @@ Section FunctionalRelation.
 
     Definition preserve_func_rel {M N: model} (R: M -> N -> Prop) := 
         forall func v, exists v', 
-            R (func f[M] v) (func f[N] v') /\ map_rel R v v'.
-
+        
+        R (func ₕ[M] v) (func ₕ[N] v') /\ map_rel R v v'.
     Definition preserve_pred_rel {M N: model} (R: M -> N -> Prop) :=
         forall pred v, exists v',
-            (pred p[M] v <-> pred p[N] v') /\ map_rel R v v'.
+            (pred ₚ[M] v <-> pred ₚ[N] v') /\ map_rel R v v'.
 
     Class isomorphism_rel {M N: model} (R: M -> N -> Prop) :=
         {
@@ -215,6 +215,6 @@ Arguments closed_theory_of_model {_ _ _} _.
 
 
 Notation "M ≡ N"  := (elementary_equivalence M N) (at level 30).
-Notation "M ≅ N"  := (exists h: M -> N, isomorphic h) (at level 30).
+Notation "M ≅ N"  := (exists h: M -> N, isomorphism h) (at level 30).
 Notation "M ≅ᵣ N" := (exists R: M -> N -> Prop, isomorphism_rel R) (at level 30).
 Notation "N ⪳ M"  := (exists h: N -> M, elementary_homormophism h) (at level 30).

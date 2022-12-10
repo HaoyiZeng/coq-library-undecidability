@@ -25,7 +25,7 @@ Section Iso_impl_elementary.
     Lemma term_preserved {M N: model} {ρ ρ'} (h: M -> N) : 
           (forall x: nat, h (ρ x) = ρ' x)
         -> preserve_func h
-        -> forall term: term, h (term t[M] ρ) = term t[N] ρ'.
+        -> forall term: term, h (term ₜ[M] ρ) = term ₜ[N] ρ'.
     Proof.
         intros Heq pf.
         induction term; cbn. easy.
@@ -68,7 +68,7 @@ Section Iso_impl_elementary.
         ∀ φ, ρ ⊨ φ <-> ρ' ⊨ φ
     *)
 
-      Arguments iso_impl_elementary' {_ _ _ _ _}.
+    Arguments iso_impl_elementary' {_ _ _ _ _}.
 
     Theorem iso_impl_elementary {M N: model}: 
         M ≅ N -> M ≡ N.
@@ -109,7 +109,7 @@ Section Rel_impl.
       (forall x: nat, R (ρ x) (ρ' x))
     -> isomorphism_rel R 
     -> preserve_func_rel R
-    -> forall t: term, R (t t[M] ρ) (t t[N] ρ').
+    -> forall t: term, R (t ₜ[M] ρ) (t ₜ[N] ρ').
     Proof.
       intros Heq iso pf.
       induction t; cbn. easy.
@@ -158,8 +158,6 @@ Section Rel_impl.
     Admitted.
 
     Arguments iso_impl_elementary_rel' {_ _ _ _ _}.
-
-    Notation "M ≅ᵣ N" := (exists R: M -> N -> Prop, isomorphism_rel R) (at level 30).
 
     Theorem iso_impl_elementary_rel {M N: model}: 
       M ≅ᵣ N -> M ≡ N.

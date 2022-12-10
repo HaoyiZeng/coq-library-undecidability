@@ -169,7 +169,7 @@ Section TheWitness.
       This env existst when the model satify the witness property
     *)
     Definition h: env M :=
-        fun n => (wit_ n) t[M] (fun _ => nonempty).
+        fun n => (wit_ n) ₜ[M] (fun _ => nonempty).
     Definition morphism: term -> M := eval M interp' h.
     Definition theory_under h: theory :=
         fun phi => M ⊨[h] phi.
@@ -182,8 +182,8 @@ Section TheWitness.
 
 
     Lemma eval_eval (ρ: env term) (tm: term):
-        (tm t[N] ρ) t[M] h = 
-                 tm t[M] (fun x => (ρ x) t[M] h). 
+        (tm ₜ[N] ρ) ₜ[M] h = 
+                 tm ₜ[M] (fun x => (ρ x) ₜ[M] h). 
     Proof.
           induction tm; try easy. 
           cbn. apply f_equal; rewrite map_map; apply map_ext_in.
@@ -191,8 +191,8 @@ Section TheWitness.
     Qed.
 
     Lemma map_eval_eval (ρ: env term) {n} (v: t term n):
-            map (fun tm => (tm t[N] ρ) t[M] h) v =
-            map (fun tm => tm t[M] (fun x => (ρ x) t[M] h)) v.
+            map (fun tm => (tm ₜ[N] ρ) ₜ[M] h) v =
+            map (fun tm => tm ₜ[M] (fun x => (ρ x) ₜ[M] h)) v.
     Proof.
         apply map_ext. apply eval_eval.
     Qed.
