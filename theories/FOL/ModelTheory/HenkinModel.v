@@ -1,7 +1,6 @@
 From Undecidability.Synthetic Require Import Definitions DecidabilityFacts EnumerabilityFacts ListEnumerabilityFacts ReducibilityFacts.
 From Undecidability Require Import Shared.ListAutomation.
 Require Import Undecidability.FOL.Completeness.TarskiCompleteness.
-Require Import Undecidability.FOL.Deduction.FragmentND.
 Require Import Undecidability.FOL.ModelTheory.Core.
 Local Set Implicit Arguments.
 

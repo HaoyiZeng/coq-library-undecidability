@@ -1,5 +1,4 @@
-From Undecidability.FOL.Syntax Require Export Facts Theories.
-From Undecidability.FOL.Semantics.Tarski Require Export FragmentFacts FragmentSoundness.
+Require Export Undecidability.FOL.FragmentSyntax.
 Require Export Vector.
 
 Local Set Implicit Arguments.
@@ -32,7 +31,6 @@ Arguments sat {_ _ _ _ _} _ _, {_ _ _} _ {_} _ _.
 Arguments interp' {_ _} _, {_ _ _}.
 
 (* Declare some notation that distinguishes the different models *)
-
 
     (* Evaluate function in model M with argument v
     func: Σ_funcs 

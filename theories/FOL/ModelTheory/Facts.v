@@ -16,8 +16,6 @@ Section Iso_impl_elementary.
     Context {Σ_preds : preds_signature}.
     Context {ff : falsity_flag}.
 
-    Arguments eval {_ _ _}.
-
     Lemma term_preserved {M N: model} {ρ ρ'} (h: M -> N) : 
           (forall x: nat, h (ρ x) = ρ' x)
         -> preserve_func h
@@ -26,7 +24,7 @@ Section Iso_impl_elementary.
         intros Heq pf.
         induction term; cbn. easy.
         rewrite <- (map_ext_in _ _ _ _ _ v IH).
-        rewrite (pf _ (map (eval _ ρ) v)).
+        rewrite (pf _ (map (eval _ _ ρ) v)).
         now rewrite map_map.
     Qed.
 
@@ -44,7 +42,7 @@ Section Iso_impl_elementary.
     Proof.
         intros iso.
         induction φ; cbn; intros. { easy. }
-        - rewrite (pred_strong_preserved (map (eval _ ρ) t)), map_map.
+        - rewrite (pred_strong_preserved (map (eval _ _ ρ) t)), map_map.
           now rewrite (map_ext _ _ _ _ (term_preserved H func_preserved)).
         - destruct b0. rewrite (IHφ1 _ _ H), (IHφ2 _ _ H). easy.
         - destruct q. split; intros hp d. 
@@ -83,7 +81,6 @@ Section Rel_impl.
     Context {Σ_funcs : funcs_signature}.
     Context {Σ_preds : preds_signature}.
     Context {ff : falsity_flag}.
-    Arguments eval {_ _ _}.
 
     Fact function_rel_map {X Y} (R: X -> Y -> Prop) {n: nat} (v1: vec X n) (v2 v2': vec Y n):
         function_rel R -> map_rel R v1 v2 -> map_rel R v1 v2' -> v2 = v2'.
@@ -109,8 +106,8 @@ Section Rel_impl.
     Proof.
       intros Heq iso pf.
       induction t; cbn. easy.
-      destruct (pf _ (map (eval interp' ρ) v)) as [v' [H Rvv']]; cbn.
-      assert (v' = (map (eval interp' ρ') v)).
+      destruct (pf _ (map (eval _ interp' ρ) v)) as [v' [H Rvv']]; cbn.
+      assert (v' = (map (eval _ interp' ρ') v)).
       eapply function_rel_map.
       destruct iso as [_ _ [h _]].
       exact h.
@@ -128,8 +125,8 @@ Section Rel_impl.
       induction φ; cbn; intros. { easy. }
     (* - rewrite (pred_strong_preserved (map (eval _ ρ) t)), map_map.
       now rewrite (map_ext _ _ _ _ (term_preserved H func_preserved)). *)
-    - destruct (pred_preserved_rel (map (eval interp' ρ) t) ) as [v' [IH Rt]]. 
-      enough (v' = (map (eval interp' ρ') t)).
+    - destruct (pred_preserved_rel (map (eval _ interp' ρ) t) ) as [v' [IH Rt]]. 
+      enough (v' = (map (eval _ interp' ρ') t)).
       rewrite <- H0; assumption.
       eapply function_rel_map.
       destruct iso as [_ _ [h _]].

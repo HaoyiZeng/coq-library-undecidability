@@ -1,6 +1,7 @@
 (* Basic definition in model theory *)
 
 Require Export Undecidability.FOL.ModelTheory.ModelNotation.
+Require Export Undecidability.FOL.Syntax.Theories.
 Local Set Implicit Arguments.
 (* Local Unset Strict Implicit. *)
 
@@ -142,6 +143,7 @@ Section Elementary.
         forall phi ρ, M ⊨[ρ] phi <-> N ⊨[ρ >> h] phi.
 
 End Elementary.
+
 
 (* closed_theory_of_model : ∀ M: model, closed_T (theory_model M) *)
 Arguments closed_theory_of_model {_ _ _} _.

@@ -941,3 +941,4 @@ FOL/ArithmeticalHierarchy/ArithmeticalHierarchyEquiv.v
 FOL/ModelTheory/Core.v 
 FOL/ModelTheory/HenkinModel.v 
 FOL/ModelTheory/Facts.v
+FOL/ModelTheory/ModelNotation.v
