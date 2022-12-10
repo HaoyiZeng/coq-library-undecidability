@@ -1,12 +1,8 @@
 From Undecidability.Synthetic Require Import Definitions DecidabilityFacts EnumerabilityFacts ListEnumerabilityFacts ReducibilityFacts.
-From Undecidability.FOL.Semantics.Tarski Require Import FragmentCore FragmentFacts FragmentSoundness.
-From Undecidability.FOL.Syntax Require Import Core Facts Theories.
 From Undecidability Require Import Shared.ListAutomation.
 Require Import Undecidability.FOL.Completeness.TarskiCompleteness.
 Require Import Undecidability.FOL.Deduction.FragmentND.
 Require Import Undecidability.FOL.ModelTheory.Core.
-Require Import Vector.
-Local Notation vec := t.
 Local Set Implicit Arguments.
 
 

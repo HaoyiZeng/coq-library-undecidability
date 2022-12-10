@@ -6,12 +6,8 @@
    M ≅ᵣ N → M ≡ N.
 *)
 
-From Undecidability.FOL.Semantics.Tarski Require Import FragmentCore FragmentFacts.
-From Undecidability.FOL.Syntax Require Import Core Facts.
-Require Import Coq.Program.Equality.
 Require Import Undecidability.FOL.ModelTheory.Core.
-Require Import Vector.
-Local Notation vec := t.
+Require Import Coq.Program.Equality.
 Local Set Implicit Arguments.
 
 
