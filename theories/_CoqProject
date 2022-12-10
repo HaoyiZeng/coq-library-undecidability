@@ -937,3 +937,7 @@ FOL/Proofmode/DemoMinZF.v
 FOL/ArithmeticalHierarchy/ArithmeticalHierarchySyntactic.v
 FOL/ArithmeticalHierarchy/ArithmeticalHierarchySemantic.v
 FOL/ArithmeticalHierarchy/ArithmeticalHierarchyEquiv.v
+
+FOL/ModelTheory/Core.v 
+FOL/ModelTheory/HenkinModel.v 
+FOL/ModelTheory/Facts.v
