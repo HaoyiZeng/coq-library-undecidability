@@ -1,22 +1,15 @@
-From Undecidability.Synthetic Require Import Definitions DecidabilityFacts EnumerabilityFacts ListEnumerabilityFacts ReducibilityFacts.
+From Undecidability Require Import Synthetic.EnumerabilityFacts Synthetic.ListEnumerabilityFacts Shared.ListAutomation.
 Require Import Undecidability.FOL.Completeness.TarskiCompleteness.
-From Undecidability Require Import Shared.ListAutomation.
 Require Import Undecidability.FOL.ModelTheory.Core.
 Local Set Implicit Arguments.
 
 
-(* 
-   In the section, the Löwenheim–Skolem theorem downward part is shown 
-   by henkin construction. We assume that the model M is non-empty and 
-   classical, so this is basically a simple application of the model 
-   existing Lemma.
-
-   Result:
-   ∀ M: model, ∃ N: model, M ≡ N and N is countable
-*)
-
-Section HenkinModel.
+(* Gives the proof that any model with term as domain is countable. 
+   It may be possible to generalize to arbitrary cardinality depandent
+   on signature. *)
+Section TermModelIsCountable.
     Context {Σf : funcs_signature} {Σp : preds_signature}.
+    Existing Instance falsity_on.
 
     (* Proof of countable *)
     Context {HdF : eq_dec Σf} {HdP : eq_dec Σp}.
@@ -28,16 +21,14 @@ Section HenkinModel.
     Variable list_Funcs : nat -> list syms.
     Hypothesis enum_Funcs' : list_enumerator__T list_Funcs syms.
 
-    Definition countable_model M :=
+    Definition injects X Y := exists f : X -> Y, forall x x', f x = f x' -> x = x'.
+    Definition infinite X := injects nat X.
+    Definition same_cardinality X Y := injects X Y /\ injects Y X.
+
+    Definition a_coutable_model M :=
         exists f: nat -> M, surjective f.
 
-    Instance term_model M: model := 
-    {
-        domain := term;
-        interp' := model_bot (closed_theory_of_model M)
-    }.
-
-    Lemma term_model_countable: countable_model term.
+    Lemma term_model_countable: a_coutable_model term.
     Proof.
         destruct (enumT_term enum_Funcs') as [f H]. 
         exists (fun n => match f n with None => var n | Some t => t end).
@@ -45,17 +36,41 @@ Section HenkinModel.
         exists n. now rewrite eq.
     Qed.
 
-    (* Proof of elementary equivalence *)
-    Existing Instance falsity_on.
 
+    (* 
+    Variable eP : nat -> option Σp.
+    Context {HeP : enumerator__T eP Σp}.
+
+    Lemma term_model_card:
+        same_cardinality Σ_f term.
+    *)
+
+(* 
+   In the section, the Löwenheim–Skolem theorem downward part is shown 
+   by henkin construction. We assume that the model M is non-empty and 
+   classical, so this is basically a simple application of the model 
+   existing Lemma.
+
+   Result:
+   ∀ M: model, ∃ N: model, M ≡ N and N is countable
+*)
+Section HenkinModel.
     (* Consider a nonempty classical model *)
     Variable M: model.
     Hypothesis classical_model: classical interp'.
     Hypothesis noempty: M.
 
     Definition input_theory: theory := theory_of_model M.
+
     Definition output_theory: theory := 
         Out_T (construct_construction (input_bot (closed_theory_of_model M))).
+
+    Instance term_model M: model := 
+    {
+        domain := term;
+        interp' := model_bot (closed_theory_of_model M)
+    }.
+
 
     Lemma Hcon_in_M: consistent class input_theory.
     Proof.
@@ -114,7 +129,7 @@ Section HenkinModel.
         at most countable. 
     *)
     Theorem LS_downward_weaker: 
-        exists N: model, countable_model N /\ M ≡ N.
+        exists N: model, a_coutable_model N /\ M ≡ N.
     Proof.
         exists (term_model M).
         split. {apply term_model_countable. }
@@ -138,11 +153,10 @@ End HenkinModel.
     embedding from the henkin model to the original model is constructible.
 
    Result:
-   ∀ M: model, M satisfy the witness property → ∃ N: model, N ⪳ M.
+   ∀ M: model, M satisfy the witness property → ∃ N: model, N ⪳ M and N is countable.
 *)
 
 Section TheWitness.
-    Context {Σf : funcs_signature} {Σp : preds_signature}.
 
     Existing Instance falsity_on.    
 
@@ -193,9 +207,10 @@ Section TheWitness.
     Qed.
 
     Theorem LS_downward_under_witness: 
-        exists (N: model), N ⪳ M.
+        exists (N: model), a_coutable_model N /\ N ⪳ M.
     Proof.
-        exists N, morphism; intros φ. 
+        exists N. split. {apply term_model_countable. }
+        exists morphism; intros φ. 
         induction φ using form_ind_falsity; intro; try easy. 
         - cbn; now rewrite map_map, map_eval_eval.
         - destruct b0; cbn; intuition.
@@ -217,13 +232,9 @@ End TheWitness.
 
 
 Section DC.
-
-    Context {Σf : funcs_signature} {Σp : preds_signature}.
-    Existing Instance falsity_on.
-
     Variable M: model. 
     Hypothesis nonempty: M.
-    (* A classical and nonempty model *)
+    (* A nonempty model *)
 
 
     Variable phi_ : nat -> form.
@@ -232,7 +243,7 @@ Section DC.
     (* Maybe with the countable choice? We have *)
     Hypothesis choiceWit:
         forall n, match wit_ n with
-          | None => True
+          | None => True  (* What should I add here? *)
           | Some t => forall σ, bounded_t 0 t /\ M ⊨[σ] (((phi_ n)[t..]) → ∀ (phi_ n))
         end.
 
@@ -278,16 +289,16 @@ Section DC.
         - destruct b0; cbn; intuition.
         - destruct q; split. 
           + intros H d; destruct (Hphi φ) as [i phi].
-          specialize (H (var i)); specialize (@choiceWit i).
-          apply IHφ in H; rewrite phi in choiceWit.
-          destruct (wit_ i) eqn: E.
-          eapply choiceWit; cbn.
-          revert H; setoid_rewrite sat_comp; cbn.
-          eapply sat_ext; induction x; cbn. 2: trivial.
-          destruct (choiceWit (fun _ => nonempty)) as [witness_closed _].
-          unfold h'. rewrite E. 
-          now apply bounded_eval_t with 0, witness_closed.
-          admit.
+            specialize (H (var i)); specialize (@choiceWit i).
+            apply IHφ in H; rewrite phi in choiceWit.
+            destruct (wit_ i) eqn: E.
+            ++ eapply choiceWit; cbn.
+               revert H; setoid_rewrite sat_comp; cbn.
+               eapply sat_ext; induction x; cbn. 2: trivial.
+               destruct (choiceWit (fun _ => nonempty)) as [witness_closed _].
+               unfold h'. rewrite E. 
+               now apply bounded_eval_t with 0, witness_closed.
+            ++ admit.
           + intros H d; rewrite (IHφ (d.:ρ)).
             specialize (H (morphism' d)).
             revert H; apply sat_ext.
@@ -295,6 +306,8 @@ Section DC.
     Admitted.
 
 End DC.
+
+End TermModelIsCountable.
 
 
 (* Section Final.
@@ -307,16 +320,14 @@ End DC.
     *)
 
     Context {Σf : funcs_signature} {Σp : preds_signature}.
-    Existing Instance falsity_on.
-    Definition has_same_card N M := exists g: N -> M, bijective g.
-    Definition infinite X := exists f: nat -> X, injective f. 
+
     Hypothesis LS_weaker: 
-        forall (M: model) X (f: X -> M), injective f -> infinite X ->
-            exists N: model, N ≡ M /\ has_same_card N X.
+        forall (M: model) X (f: X -> M), infinite X -> injective f ->
+            exists N: model, N ≡ M /\ same_cardinality N X.
 
     Hypothesis LS_stronger: 
-        forall (M: model) X (f: X -> M), injective f -> infinite X ->
-            exists N: model, N ⪳ M /\ has_same_card N X.
+        DC <-> forall (M: model) X (f: X -> M), 
+                infinite X -> injective f -> exists N: model, N ⪳ M /\ same_cardinality N X.
 
 End Final. *)
 

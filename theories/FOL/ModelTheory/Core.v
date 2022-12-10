@@ -148,7 +148,6 @@ End Elementary.
 (* closed_theory_of_model : ∀ M: model, closed_T (theory_model M) *)
 Arguments closed_theory_of_model {_ _ _} _.
 
-
 Notation "M ≡ N"  := (elementary_equivalence M N) (at level 30).
 Notation "M ≅ N"  := (exists h: M -> N, isomorphism h) (at level 30).
 Notation "M ≅ᵣ N" := (exists R: M -> N -> Prop, isomorphism_rel R) (at level 30).
