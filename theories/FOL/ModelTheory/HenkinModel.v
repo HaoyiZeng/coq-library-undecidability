@@ -1,6 +1,6 @@
 From Undecidability.Synthetic Require Import Definitions DecidabilityFacts EnumerabilityFacts ListEnumerabilityFacts ReducibilityFacts.
-From Undecidability Require Import Shared.ListAutomation.
 Require Import Undecidability.FOL.Completeness.TarskiCompleteness.
+From Undecidability Require Import Shared.ListAutomation.
 Require Import Undecidability.FOL.ModelTheory.Core.
 Local Set Implicit Arguments.
 
@@ -48,7 +48,7 @@ Section HenkinModel.
     (* Proof of elementary equivalence *)
     Existing Instance falsity_on.
 
-    (* Consider a noemoty classical model *)
+    (* Consider a nonempty classical model *)
     Variable M: model.
     Hypothesis classical_model: classical interp'.
     Hypothesis noempty: M.
@@ -176,20 +176,20 @@ Section TheWitness.
         { domain := term; interp' := interp_term }.
 
 
-    Lemma eval_eval (ρ: env term) (tm: term):
-        (tm ₜ[N] ρ) ₜ[M] h = 
-                 tm ₜ[M] (fun x => (ρ x) ₜ[M] h). 
+    Lemma eval_eval (ρ: env term) (t: term):
+        (t ₜ[N] ρ) ₜ[M] h = 
+                 t ₜ[M] (fun x => (ρ x) ₜ[M] h). 
     Proof.
-          induction tm; try easy. 
-          cbn. apply f_equal; rewrite map_map; apply map_ext_in.
-          intro a. now apply IH.
+          induction t; try easy; cbn. 
+          apply f_equal; rewrite map_map; apply map_ext_in.
+          now apply IH.
     Qed.
 
     Lemma map_eval_eval (ρ: env term) {n} (v: t term n):
-            map (fun tm => (tm ₜ[N] ρ) ₜ[M] h) v =
-            map (fun tm => tm ₜ[M] (fun x => (ρ x) ₜ[M] h)) v.
+            map (fun t => (t ₜ[N] ρ) ₜ[M] h) v =
+            map (fun t => t ₜ[M] (fun x => (ρ x) ₜ[M] h)) v.
     Proof.
-        apply map_ext. apply eval_eval.
+        apply map_ext, eval_eval.
     Qed.
 
     Theorem LS_downward_under_witness: 
@@ -197,7 +197,7 @@ Section TheWitness.
     Proof.
         exists N, morphism; intros φ. 
         induction φ using form_ind_falsity; intro; try easy. 
-        - cbn; rewrite map_map; now rewrite map_eval_eval.
+        - cbn; now rewrite map_map, map_eval_eval.
         - destruct b0; cbn; intuition.
         - destruct q; split. 
           + intros H d; destruct (Hphi φ) as [i phi].
@@ -216,40 +216,85 @@ Section TheWitness.
 End TheWitness.
 
 
-(* Section DC.
+Section DC.
 
     Context {Σf : funcs_signature} {Σp : preds_signature}.
     Existing Instance falsity_on.
 
     Variable M: model. 
-    Hypothesis classical_model: classical (interp' M).
     Hypothesis nonempty: M.
     (* A classical and nonempty model *)
 
-    
-    Variable enum_phi : nat -> form.
-    Hypothesis He : forall phi, exists n, enum_phi n = phi.
-    Variable index_wit: nat -> option term.
+
+    Variable phi_ : nat -> form.
+    Hypothesis Hphi : forall phi, exists n, phi_ n = phi.
+    Variable wit_: nat -> option term.
     (* Maybe with the countable choice? We have *)
-    Hypothesis withDC:
-        forall n, match index_wit n with
-            | None => True
-            | Some t => forall h n, M ⊨[h] (henkin_axiom (enum_phi n))[t..]
-            end.
+    Hypothesis choiceWit:
+        forall n, match wit_ n with
+          | None => True
+          | Some t => forall σ, bounded_t 0 t /\ M ⊨[σ] (((phi_ n)[t..]) → ∀ (phi_ n))
+        end.
+
     Variable inaccessible: M.
-    Definition homo': env M :=
-        fun n => match index_wit n with
+    Hypothesis inaccessible_prop: forall t, 
+        bounded_t 0 t -> ~ forall ρ, (t ₜ[M] ρ) = inaccessible.
+
+    Definition h': env M :=
+        fun n => match wit_ n with
             | None => inaccessible
-            | Some t => t t[M] (fun _ => nonempty)
+            | Some t => t ₜ[M] (fun _ => nonempty)
             end.
+    Definition morphism': term -> M := eval M interp' h'.
+
+    Instance interp_term': interp term :=
+        {| i_func := func; i_atom := fun P v => atom P v ∈ theory_under h'|}.
+    Instance N': model :=
+        { domain := term; interp' := interp_term' }.
+
+    Lemma eval_eval' (ρ: env term) (t: term):
+        (t ₜ[N'] ρ) ₜ[M] h' = 
+                 t ₜ[M] (fun x => (ρ x) ₜ[M] h'). 
+    Proof.
+          induction t; try easy; cbn. 
+          apply f_equal; rewrite map_map; apply map_ext_in.
+          now apply IH.
+    Qed.
+
+    Lemma map_eval_eval' (ρ: env term) {n} (v: t term n):
+        map (fun t => (t ₜ[N'] ρ) ₜ[M] h') v =
+        map (fun t => t ₜ[M] (fun x => (ρ x) ₜ[M] h')) v.
+    Proof.
+    apply map_ext, eval_eval'.
+    Qed.
+
 
     Theorem LS_downward'':
         exists (N: model) (h: N -> M), elementary_homormophism h.
     Proof.
+        exists N', morphism'; intros φ. 
+        induction φ using form_ind_falsity; intro; try easy. 
+        - cbn; now rewrite map_map, map_eval_eval'.
+        - destruct b0; cbn; intuition.
+        - destruct q; split. 
+          + intros H d; destruct (Hphi φ) as [i phi].
+          specialize (H (var i)); specialize (@choiceWit i).
+          apply IHφ in H; rewrite phi in choiceWit.
+          destruct (wit_ i) eqn: E.
+          eapply choiceWit; cbn.
+          revert H; setoid_rewrite sat_comp; cbn.
+          eapply sat_ext; induction x; cbn. 2: trivial.
+          destruct (choiceWit (fun _ => nonempty)) as [witness_closed _].
+          unfold h'. rewrite E. 
+          now apply bounded_eval_t with 0, witness_closed.
+          admit.
+          + intros H d; rewrite (IHφ (d.:ρ)).
+            specialize (H (morphism' d)).
+            revert H; apply sat_ext.
+            induction x; easy.
     Admitted.
 
-    
-End DC. *)
+End DC.
 
 
 (* Section Final.

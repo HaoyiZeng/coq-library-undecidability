@@ -106,8 +106,8 @@ Section FunctionalRelation.
 
     Definition preserve_func_rel {M N: model} (R: M -> N -> Prop) := 
         forall func v, exists v', 
-        
-        R (func ₕ[M] v) (func ₕ[N] v') /\ map_rel R v v'.
+            R (func ₕ[M] v) (func ₕ[N] v') /\ map_rel R v v'.
+
     Definition preserve_pred_rel {M N: model} (R: M -> N -> Prop) :=
         forall pred v, exists v',
             (pred ₚ[M] v <-> pred ₚ[N] v') /\ map_rel R v v'.
