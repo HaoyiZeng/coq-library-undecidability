@@ -158,6 +158,7 @@ End HenkinModel.
 
 Section TheWitness.
 
+    Definition closed_term t := bounded_t 0 t.
     Existing Instance falsity_on.    
 
     (* A nonempty model *)
@@ -168,10 +169,10 @@ Section TheWitness.
     Variable phi_ : nat -> form.
     Hypothesis Hphi : forall phi, exists n, phi_ n = phi.
     Variable wit_: nat -> term.
-    Hypothesis witness_prop: 
-        forall n σ, M ⊨[σ] (((phi_ n)[(wit_ n)..]) → ∀ (phi_ n)).
-    Hypothesis witness_closed:
-        forall n, bounded_t 0 (wit_ n).
+    Definition witness_prop_ n := 
+         M ⊨[_] (((phi_ n)[(wit_ n)..]) → ∀ (phi_ n)).
+    Hypothesis Hwitness_prop: 
+        forall n, closed_term (wit_ n) /\ witness_prop_ n.
 
     (* 
       Consider the env that map $n to the witness of φ_n
@@ -216,9 +217,9 @@ Section TheWitness.
         - destruct b0; cbn; intuition.
         - destruct q; split. 
           + intros H d; destruct (Hphi φ) as [i phi].
-            specialize (H (var i)); specialize (@witness_prop i).
-            apply IHφ in H; rewrite phi in witness_prop.
-            eapply witness_prop; cbn.
+            specialize (H (var i)); destruct (@Hwitness_prop i) as [witness_closed witness_prop_i].
+            apply IHφ in H; unfold witness_prop_ in witness_prop_i; rewrite phi in witness_prop_i.
+            eapply witness_prop_i.
             revert H; setoid_rewrite sat_comp; cbn.
             eapply sat_ext; induction x; cbn. 2: trivial.
             now apply bounded_eval_t with 0, witness_closed.
@@ -243,8 +244,8 @@ Section DC.
     (* Maybe with the countable choice? We have *)
     Hypothesis choiceWit:
         forall n, match wit_ n with
-          | None => True  (* What should I add here? *)
-          | Some t => forall σ, bounded_t 0 t /\ M ⊨[σ] (((phi_ n)[t..]) → ∀ (phi_ n))
+          | None => forall t, ~ (bounded_t 0 t /\ M ⊨[_] (∀ (phi_ n) → ((phi_ n)[t..])))
+          | Some t => bounded_t 0 t /\ M ⊨[_] (((phi_ n)[t..]) → ∀ (phi_ n))
         end.
 
     Variable inaccessible: M.
@@ -295,7 +296,7 @@ Section DC.
             ++ eapply choiceWit; cbn.
                revert H; setoid_rewrite sat_comp; cbn.
                eapply sat_ext; induction x; cbn. 2: trivial.
-               destruct (choiceWit (fun _ => nonempty)) as [witness_closed _].
+               destruct choiceWit as [witness_closed _].
                unfold h'. rewrite E. 
                now apply bounded_eval_t with 0, witness_closed.
             ++ admit.
