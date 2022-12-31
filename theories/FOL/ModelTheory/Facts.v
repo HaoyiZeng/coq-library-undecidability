@@ -140,16 +140,12 @@ Section Rel_impl.
     Proof using ff.
       intros iso.
       induction φ; cbn; intros. { easy. }
-    - destruct (pred_preserved_rel (map (eval _ interp' ρ) t)) as [v' [IH Rt]].
-      enough (v' = (map (eval _ interp' ρ') t)).
-      rewrite <- H0; assumption.
+    - destruct (pred_preserved_rel (map (eval _ interp' ρ) t)) as [v' [IH Rt]]; cbn.
+      enough (v' = (map (eval _ interp' ρ') t)) as Heq.
+      rewrite <- Heq; assumption.
       eapply function_rel_map.
-      destruct iso as [_ _ [h _]].
-      exact h.
-      exact Rt.
-      apply term_vec_preserved_rel.
-      exact H.
-      exact iso.
+      destruct iso as [_ _ [h _]]. exact h. exact Rt.
+      apply term_vec_preserved_rel; eauto.
       apply func_preserved_rel.
     - destruct b0. rewrite (IHφ1 _ _ H), (IHφ2 _ _ H). easy.
     - destruct q. split; intros hp d.
@@ -161,7 +157,7 @@ Section Rel_impl.
       + destruct morphism_biject_rel as [[fu total] [inj sur]].
         destruct (total d) as [n Rmn].
         apply (IHφ (d .: ρ) (n .: ρ')).
-        induction x; cbn; try easy.
+        induction x; cbn; eauto.
         exact (hp n).
     Qed.
 
