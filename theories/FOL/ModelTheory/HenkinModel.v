@@ -178,8 +178,9 @@ Section TheWitness.
       Consider the env that map $n to the witness of φ_n
       This env existst when the model satify the witness property
     *)
-    Definition h: env M :=
-        fun n => (wit_ n) ₜ[M] (fun _ => nonempty).
+    (* Definition h: env M :=
+        fun n => (wit_ n) ₜ[M] (fun _ => nonempty). *)
+    Definition h: env M := fun _ => nonempty.
     Definition morphism: term -> M := eval M interp' h.
     Definition theory_under h: theory :=
         fun phi => M ⊨[h] phi.
@@ -217,7 +218,7 @@ Section TheWitness.
         - destruct b0; cbn; intuition.
         - destruct q; split. 
           + intros H d; destruct (Hphi φ) as [i phi].
-            specialize (H (var i)); destruct (@Hwitness_prop i) as [witness_closed witness_prop_i].
+            specialize (H (wit_ i)); destruct (@Hwitness_prop i) as [witness_closed witness_prop_i].
             apply IHφ in H; unfold witness_prop_ in witness_prop_i; rewrite phi in witness_prop_i.
             eapply witness_prop_i.
             revert H; setoid_rewrite sat_comp; cbn.
