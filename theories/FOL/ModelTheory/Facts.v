@@ -16,7 +16,7 @@ Section Iso_impl_elementary.
     Context {Σ_preds : preds_signature}.
     Context {ff : falsity_flag}.
 
-    Lemma term_preserved {M N: model} {ρ ρ'} (h: M -> N) : 
+    Lemma term_preserved {M N: model} {ρ ρ'} (h: M -> N) :
           (forall x: nat, h (ρ x) = ρ' x)
         -> preserve_func h
         -> forall term: term, h (term ₜ[M] ρ) = term ₜ[N] ρ'.
@@ -28,15 +28,15 @@ Section Iso_impl_elementary.
         now rewrite map_map.
     Qed.
 
-    (* 
-        ∀ x, h (ρ x) = ρ' x  
+    (*
+        ∀ x, h (ρ x) = ρ' x
         func_preserved h
         ----------------------
         ∀ t, h (Ρ t) = Ρ' t
     *)
 
-    Lemma iso_impl_elementary' {M N: model} (h: M -> N): 
-          isomorphism h 
+    Lemma iso_impl_elementary' {M N: model} (h: M -> N):
+          isomorphism h
         -> forall φ ρ ρ', (forall x, h (ρ x) = ρ' x)
         -> M ⊨[ρ] φ <-> N ⊨[ρ'] φ.
     Proof.
@@ -45,7 +45,7 @@ Section Iso_impl_elementary.
         - rewrite (pred_strong_preserved (map (eval _ _ ρ) t)), map_map.
           now rewrite (map_ext _ _ _ _ (term_preserved H func_preserved)).
         - destruct b0. rewrite (IHφ1 _ _ H), (IHφ2 _ _ H). easy.
-        - destruct q. split; intros hp d. 
+        - destruct q. split; intros hp d.
           + destruct (morphism_surjective d) as [m heq].
             apply (IHφ (m .: ρ) (d .: ρ')).
             induction x; cbn; easy.
@@ -55,9 +55,9 @@ Section Iso_impl_elementary.
             exact (hp (h d)).
     Qed.
 
-    (* 
-        ∀ x, h (ρ x) = ρ' x 
-        M ⋍ N 
+    (*
+        ∀ x, h (ρ x) = ρ' x
+        M ⋍ N
         -------------------------
         ∀ φ, ρ ⊨ φ <-> ρ' ⊨ φ
     *)
@@ -87,72 +87,87 @@ Section Rel_impl.
     Proof.
         intros H1 H2.
         dependent induction H2; dependent destruction v2'; try easy.
-        - intros.
-          specialize (IHmap_rel v2').
-          rewrite IHmap_rel.
-          enough (y = h).
-          rewrite H3. easy.
-          dependent destruction H0.
-          eapply H1 . exact H. easy.
-          dependent destruction H0; eassumption.
+        intros; specialize (IHmap_rel v2'); rewrite IHmap_rel.
+        enough (y = h). rewrite H3; easy.
+        dependent destruction H0.
+        eapply H1. exact H. easy.
+        dependent destruction H0; eassumption.
+    Qed.
+
+    Lemma In_rel_map  {M N: model} {ρ ρ'} (R: M -> N -> Prop) {n} (v: vec term n):
+      (forall t : term, In t v -> R (t ₜ[ M] ρ) (t ₜ[ N] ρ'))
+    -> map_rel R (map (eval M interp' ρ) v) (map (eval N interp' ρ') v).
+    Proof.
+      induction v; cbn; constructor.
+      apply IHv; intros.
+      all: apply H; now constructor.
+    Qed.
+
+    Lemma term_preserved_rel {M N: model} {ρ ρ'} (R: M -> N -> Prop) (t: term) :
+      (forall x: nat, R (ρ x) (ρ' x))
+    -> isomorphism_rel R
+    -> preserve_func_rel R
+    -> R (t ₜ[M] ρ) (t ₜ[N] ρ').
+    Proof.
+      induction t; intros; try easy.
+      - apply H.
+      - destruct (H1 _ (map (eval _ interp' ρ) v)) as [v' [Hp Rvv']]; cbn.
+        enough (v' = (map (eval _ interp' ρ') v)) as Heq.
+        now rewrite <- Heq.
+        eapply function_rel_map.
+        destruct H0 as [_ _ [h _]].
+        exact h. exact Rvv'.
+        apply In_rel_map.
+        intros; now apply IH.
+    Qed.
+
+    Lemma term_vec_preserved_rel {M N: model} {ρ ρ'} (R: M -> N -> Prop) {n} (v: vec term n):
+      (forall t: nat, R (ρ t) (ρ' t))
+    -> isomorphism_rel R
+    -> preserve_func_rel R
+    -> map_rel R (map (eval M interp' ρ) v) (map (eval N interp' ρ') v).
+    Proof.
+      dependent induction v; cbn; constructor.
+      now apply IHv.
+      now apply term_preserved_rel.
     Qed.
 
 
-    Lemma term_preserved_rel {M N: model} {ρ ρ'} (R: M -> N -> Prop) : 
-      (forall x: nat, R (ρ x) (ρ' x))
-    -> isomorphism_rel R 
-    -> preserve_func_rel R
-    -> forall t: term, R (t ₜ[M] ρ) (t ₜ[N] ρ').
-    Proof.
-      intros Heq iso pf.
-      induction t; cbn. easy.
-      destruct (pf _ (map (eval _ interp' ρ) v)) as [v' [H Rvv']]; cbn.
-      assert (v' = (map (eval _ interp' ρ') v)).
-      eapply function_rel_map.
-      destruct iso as [_ _ [h _]].
-      exact h.
-      exact Rvv'.
-      admit.
-      rewrite <- H0; easy.
-    Admitted.
-
-    Lemma iso_impl_elementary_rel' `{falsity_flag} {M N: model} (R: M -> N -> Prop): 
-        isomorphism_rel R 
+    Lemma iso_impl_elementary_rel' `{falsity_flag} {M N: model} (R: M -> N -> Prop):
+        isomorphism_rel R
         -> forall φ ρ ρ', (forall x, R (ρ x) (ρ' x))
         -> M ⊨[ρ] φ <-> N ⊨[ρ'] φ.
-    Proof.
+    Proof using ff.
       intros iso.
       induction φ; cbn; intros. { easy. }
-    (* - rewrite (pred_strong_preserved (map (eval _ ρ) t)), map_map.
-      now rewrite (map_ext _ _ _ _ (term_preserved H func_preserved)). *)
-    - destruct (pred_preserved_rel (map (eval _ interp' ρ) t) ) as [v' [IH Rt]]. 
+    - destruct (pred_preserved_rel (map (eval _ interp' ρ) t)) as [v' [IH Rt]].
       enough (v' = (map (eval _ interp' ρ') t)).
       rewrite <- H0; assumption.
       eapply function_rel_map.
       destruct iso as [_ _ [h _]].
       exact h.
       exact Rt.
-      admit.
+      apply term_vec_preserved_rel.
+      exact H.
+      exact iso.
+      apply func_preserved_rel.
     - destruct b0. rewrite (IHφ1 _ _ H), (IHφ2 _ _ H). easy.
-    - destruct q. split; intros hp d. 
-    + destruct morphism_biject_rel as [[fu total] [inj sur]].
-      destruct (sur d) as [m Rmd].
-      apply (IHφ (m .: ρ) (d .: ρ')).
-      induction x; cbn. assumption.
-      exact (H x).
-      exact (hp m).
-    + destruct morphism_biject_rel as [[fu total] [inj sur]].
-      destruct (total d) as [n Rmn].
-      apply (IHφ (d .: ρ) (n .: ρ')).
-      induction x; cbn.
-      assumption.
-      exact (H x).
-      exact (hp n).
-    Admitted.
+    - destruct q. split; intros hp d.
+      + destruct morphism_biject_rel as [[fu total] [inj sur]].
+        destruct (sur d) as [m Rmd].
+        apply (IHφ (m .: ρ) (d .: ρ')).
+        induction x; cbn. assumption.
+        exact (H x). exact (hp m).
+      + destruct morphism_biject_rel as [[fu total] [inj sur]].
+        destruct (total d) as [n Rmn].
+        apply (IHφ (d .: ρ) (n .: ρ')).
+        induction x; cbn; try easy.
+        exact (hp n).
+    Qed.
 
     Arguments iso_impl_elementary_rel' {_ _ _ _ _}.
 
-    Theorem iso_impl_elementary_rel {M N: model}: 
+    Theorem iso_impl_elementary_rel {M N: model}:
       M ≅ᵣ N -> M ≡ N.
     Proof.
       intros [h iso] phi cphi. split; try easy; intros asup env.
@@ -160,15 +175,13 @@ Section Rel_impl.
       destruct (sur (env O)) as [m _].
       destruct (total m) as [n Rmn].
       apply (sat_closed _ _ (fun _ => n) cphi).
-      admit.
-      (* now apply (iso_impl_elementary_rel' (fun _ => m) (fun _ => n)). *)
+      now apply (iso_impl_elementary_rel' _ (fun _ => m) (fun _ => n)).
     - destruct morphism_biject_rel as [[func total] [inj sur]].
       destruct (total (env O)) as [n _].
       destruct (sur n) as [m Rnm].
       apply (sat_closed _ _ (fun _ => m) cphi).
-      admit. 
-      (* now apply (iso_impl_elementary_rel' (fun _ => m) (fun _ => n)). *)
-    Admitted.
+      now apply (iso_impl_elementary_rel' _ (fun _ => m) (fun _ => n)).
+    Qed.
 
 
 End Rel_impl.
