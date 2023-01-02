@@ -216,8 +216,11 @@ Section iso_impl_el_emb.
 
   Theorem iso_impl_el_emb:
     N ≅ M -> N ⪳ M.
-  Proof.
+ Proof.
     intros [f iso]; exists f.
-    intro phi. induction phi; cbn; try easy.
+    (*intro phi. induction phi; cbn; try easy. *)
     admit.
  Admitted.
+
+
+End iso_impl_el_emb.

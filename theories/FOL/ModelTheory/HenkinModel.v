@@ -193,10 +193,10 @@ Section TheWitness.
 
 
     Lemma eval_eval (ρ: env term) (t: term):
-        (t ₜ[N] ρ) ₜ[M] h = 
-                 t ₜ[M] (fun x => (ρ x) ₜ[M] h). 
+        (t ₜ[N] ρ) ₜ[M] h =
+                 t ₜ[M] (fun x => (ρ x) ₜ[M] h).
     Proof.
-          induction t; try easy; cbn. 
+          induction t; try easy; cbn.
           apply f_equal; rewrite map_map; apply map_ext_in.
           now apply IH.
     Qed.
@@ -212,15 +212,15 @@ Section TheWitness.
         exists (N: model), a_coutable_model N /\ N ⪳ M.
     Proof.
         exists N. split. {apply term_model_countable. }
-        exists morphism; intros φ. 
-        induction φ using form_ind_falsity; intro; try easy. 
+        exists morphism; intros φ.
+        induction φ using form_ind_falsity; intro; try easy.
         - cbn; now rewrite map_map, map_eval_eval.
         - destruct b0; cbn; intuition.
-        - destruct q; split. 
+        - destruct q; split.
           + intros H d; destruct (Hphi φ) as [i phi].
-            specialize (H (wit_ i)); destruct (@Hwitness_prop i) as [witness_closed witness_prop_i].
-            apply IHφ in H; unfold witness_prop_ in witness_prop_i; rewrite phi in witness_prop_i.
-            eapply witness_prop_i.
+            specialize (H (wit_ i)); destruct (@Hwitness_prop i) as [witness_closed witness_prop__i].
+            apply IHφ in H; unfold witness_prop_ in witness_prop__i; rewrite phi in witness_prop__i.
+            eapply witness_prop__i.
             revert H; setoid_rewrite sat_comp; cbn.
             eapply sat_ext; induction x; cbn. 2: trivial.
             now apply bounded_eval_t with 0, witness_closed.
@@ -283,7 +283,7 @@ Section DC.
 
 
     Theorem LS_downward'':
-        exists (N: model) (h: N -> M), elementary_homormophism h.
+        exists (N: model) (h: N -> M), elementary_homomorphism h.
     Proof.
         exists N', morphism'; intros φ. 
         induction φ using form_ind_falsity; intro; try easy. 
