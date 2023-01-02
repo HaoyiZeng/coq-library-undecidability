@@ -17,7 +17,7 @@ Section Isomorphism.
     Definition preserve_pred {M N: model} (h: M -> N) :=
         forall pred v,
             pred ₚ[M] v -> pred ₚ[N] (map h v).
-        
+
     Definition strong_preserve_pred {M N: model} (h: M -> N) :=
         forall pred v,
             pred ₚ[M] v <-> pred ₚ[N] (map h v).
@@ -105,7 +105,7 @@ Section FunctionalRelation.
             map_rel R vx vy -> R x y -> map_rel R (cons _ x n vx) (cons _ y n vy).
 
     Definition preserve_func_rel {M N: model} (R: M -> N -> Prop) := 
-        forall func v, exists v', 
+        forall func v, exists v',
             R (func ₕ[M] v) (func ₕ[N] v') /\ map_rel R v v'.
 
     Definition preserve_pred_rel {M N: model} (R: M -> N -> Prop) :=
@@ -139,7 +139,7 @@ Section Elementary.
     Definition elementary_equivalence M N :=
         forall phi, closed phi -> (M ⊨[_] phi) <-> (N ⊨[_] phi).
 
-    Definition elementary_homormophism {M N: model} (h: M -> N) :=
+    Definition elementary_homomorphism {M N: model} (h: M -> N) :=
         forall phi ρ, M ⊨[ρ] phi <-> N ⊨[ρ >> h] phi.
 
 End Elementary.
@@ -151,4 +151,4 @@ Arguments closed_theory_of_model {_ _ _} _.
 Notation "M ≡ N"  := (elementary_equivalence M N) (at level 30).
 Notation "M ≅ N"  := (exists h: M -> N, isomorphism h) (at level 30).
 Notation "M ≅ᵣ N" := (exists R: M -> N -> Prop, isomorphism_rel R) (at level 30).
-Notation "N ⪳ M"  := (exists h: N -> M, elementary_homormophism h) (at level 30).
+Notation "N ⪳ M"  := (exists h: N -> M, elementary_homomorphism h) (at level 30).

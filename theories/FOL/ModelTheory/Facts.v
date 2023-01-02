@@ -1,9 +1,13 @@
 
-(* 
+(*
   This section shows that isomorphism can imply elementary equivalence:
    M ≅ N → M ≡ N.
   Even in the function which is a relationship:
    M ≅ᵣ N → M ≡ N.
+
+  Also, if there exist a elementary embedding from N to M, they're
+  elementary equivalent.
+   N ⪳ M → M ≡ N.
 *)
 
 Require Import Undecidability.FOL.ModelTheory.Core.
@@ -127,7 +131,7 @@ Section Rel_impl.
     -> preserve_func_rel R
     -> map_rel R (map (eval M interp' ρ) v) (map (eval N interp' ρ') v).
     Proof.
-      dependent induction v; cbn; constructor.
+      induction v; cbn; constructor.
       now apply IHv.
       now apply term_preserved_rel.
     Qed.
@@ -182,3 +186,38 @@ Section Rel_impl.
 
 End Rel_impl.
 
+Section el_emb_impl_elementary.
+    Context {Σ_funcs : funcs_signature}.
+    Context {Σ_preds : preds_signature}.
+    Context {ff : falsity_flag}.
+
+    Variables M N : model.
+    Variable n: N.
+
+
+  Theorem el_emb_impl_elementary:
+    N ⪳ M -> M ≡ N.
+  Proof.
+    intros [h em] phi c__phi.
+    split; firstorder.
+    apply (sat_closed _ _ ((fun _ => n) >> h) c__phi).
+    now apply em.
+  Qed.
+
+End el_emb_impl_elementary.
+
+
+Section iso_impl_el_emb.
+    Context {Σ_funcs : funcs_signature}.
+    Context {Σ_preds : preds_signature}.
+    Context {ff : falsity_flag}.
+
+    Variables M N : model.
+
+  Theorem iso_impl_el_emb:
+    N ≅ M -> N ⪳ M.
+  Proof.
+    intros [f iso]; exists f.
+    intro phi. induction phi; cbn; try easy.
+    admit.
+ Admitted.
