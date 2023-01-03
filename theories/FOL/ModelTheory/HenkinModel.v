@@ -86,7 +86,7 @@ Section HenkinModel.
     Qed.
     (* By Soundness of classical model *)
 
-    Corollary  Hcon_out_M: consistent class output_theory.
+    Corollary Hcon_out_M: consistent class output_theory.
     Proof.
         intro H; apply Hcon_in_M.
         apply Out_T_econsistent with 
@@ -174,18 +174,11 @@ Section TheWitness.
     Hypothesis Hwitness_prop: 
         forall n, closed_term (wit_ n) /\ witness_prop_ n.
 
-    (* 
-      Consider the env that map $n to the witness of φ_n
-      This env existst when the model satify the witness property
-    *)
-    (* Definition h: env M :=
-        fun n => (wit_ n) ₜ[M] (fun _ => nonempty). *)
     Definition h: env M := fun _ => nonempty.
     Definition morphism: term -> M := eval M interp' h.
     Definition theory_under h: theory :=
         fun phi => M ⊨[h] phi.
 
-    (* The henkin model which (h n) ≡ ($ n) for working without closed *)
     Instance interp_term: interp term :=
         {| i_func := func; i_atom := fun P v => atom P v ∈ theory_under h|}.
     Instance N: model :=
@@ -233,7 +226,7 @@ Section TheWitness.
 End TheWitness.
 
 
-Section DC.
+(* Section DC.
     Variable M: model. 
     Hypothesis nonempty: M.
     (* A nonempty model *)
@@ -307,7 +300,7 @@ Section DC.
             induction x; easy.
     Admitted.
 
-End DC.
+End DC. *)
 
 End TermModelIsCountable.
 

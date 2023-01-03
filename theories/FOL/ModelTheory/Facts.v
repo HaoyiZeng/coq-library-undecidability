@@ -2,12 +2,21 @@
 (*
   This section shows that isomorphism can imply elementary equivalence:
    M ≅ N → M ≡ N.
-  Even in the function which is a relationship:
+  Even in the function which is a relationship which M ≅ N → M ≅ᵣ N:
    M ≅ᵣ N → M ≡ N.
+  Isomorphism can imply there exist a elementary embedding
+   M ≅ N → M ⪳ N.
 
   Also, if there exist a elementary embedding from N to M, they're
   elementary equivalent.
    N ⪳ M → M ≡ N.
+
+So we have the following pictorial representation:
+         M ≅ᵣN ______   
+        /            ∖  
+  M ≅ N --- M ⪳ N --- M ≡ N
+        \____________/
+
 *)
 
 Require Import Undecidability.FOL.ModelTheory.Core.
@@ -72,6 +81,7 @@ Section Iso_impl_elementary.
         M ≅ N -> M ≡ N.
     Proof.
         intros [h iso] phi cphi. split; try easy; intros asup env.
+
         - destruct (morphism_surjective (env O)) as [m _].
           apply (sat_closed _ _ (fun n => h m) cphi).
           now apply (iso_impl_elementary' (fun n => m) (fun n => h m)).
@@ -167,6 +177,22 @@ Section Rel_impl.
 
     Arguments iso_impl_elementary_rel' {_ _ _ _ _}.
 
+    Theorem iso_impl_iso_rel {M N: model}:
+    M ≅ N -> M ≅ᵣ N.
+    Proof.
+      intros [h H]. exists (fun x y => h x = y); constructor.
+      - intros phi v; exists (map h v); split.
+        apply func_preserved. induction v; now constructor.
+      - intros phi v; exists (map h v); split.
+        apply pred_strong_preserved. induction v; now constructor.
+      - specialize morphism_surjective as m;
+        specialize morphism_injectived as i.
+        split; split; eauto.
+        intros x y y'. intros; intuition congruence.
+        intros x. now exists (h x).
+        intros x y y' A B; apply i; congruence.
+    Qed.
+
     Theorem iso_impl_elementary_rel {M N: model}:
       M ≅ᵣ N -> M ≡ N.
     Proof.
@@ -182,7 +208,6 @@ Section Rel_impl.
       apply (sat_closed _ _ (fun _ => m) cphi).
       now apply (iso_impl_elementary_rel' _ (fun _ => m) (fun _ => n)).
     Qed.
-
 
 End Rel_impl.
 
@@ -207,20 +232,82 @@ Section el_emb_impl_elementary.
 End el_emb_impl_elementary.
 
 
-Section iso_impl_el_emb.
-    Context {Σ_funcs : funcs_signature}.
-    Context {Σ_preds : preds_signature}.
-    Context {ff : falsity_flag}.
+Section Basic_facts.
 
-    Variables M N : model.
+  Context {Σ_funcs : funcs_signature}.
+  Context {Σ_preds : preds_signature}.
+  Context {b : falsity_flag}.
 
-  Theorem iso_impl_el_emb:
-    N ≅ M -> N ⪳ M.
+  Variables M N : model.
+
+ Lemma cons_comp (f: M -> N) ρ d n:
+   ((f d) .: ρ >> f) n = ((d.:ρ) >> f) n.
  Proof.
-    intros [f iso]; exists f.
-    (*intro phi. induction phi; cbn; try easy. *)
-    admit.
- Admitted.
+   induction n; try easy.
+ Qed.
+
+ Lemma cons_comp_sat (f: M -> N) ρ d phi:
+    N ⊨[(f d) .: ρ >> f] phi <-> N ⊨[ (d .: ρ) >> f] phi.
+ Proof.
+  apply sat_ext, cons_comp.
+ Qed.
+
+ Lemma In_map (f: M -> N) p h {n} (v: vec term n):
+   (forall t : term, In t v -> t ₜ[ N] (p >> h) = h (t ₜ[M] p))
+  -> (map (eval N interp' (p >> h)) v = map h (map (eval M interp' p) v)).
+Proof.
+  induction v; cbn; try easy.
+  intros; rewrite IHv, H; try constructor.
+  now intros; eapply H; constructor.
+Qed.
+
+ Lemma map_eval_cons (f: M -> N) p {n} (v: vec term n):
+   preserve_func f ->
+   (map (eval N interp' (p >> f)) v =
+   map f (map (eval M interp' p) v)).
+ Proof.
+   intro H; induction v; cbn; try easy.
+   enough (h ₜ[N] (p >> f) = f (h ₜ[M] p)) as Heq by now rewrite IHv, Heq.
+   induction h; try easy; cbn.
+   now rewrite H; rewrite <- In_map. 
+Qed.
+
+ Lemma preserved_pred' (h: M -> N) P v:
+    strong_preserve_pred h
+ -> preserve_func h
+ -> forall p, M ⊨[p] atom P v <-> N ⊨[p>>h] atom P v.
+ Proof.
+   split; cbn; intro.
+   - specialize (H P (map (eval M interp' p) v)).
+     apply H in H1; now rewrite map_eval_cons.
+   - apply H; now rewrite <- map_eval_cons.
+ Qed.
+
+End Basic_facts.
+
+
+Section iso_impl_el_emb.
+
+  Context {Σ_funcs : funcs_signature}.
+  Context {Σ_preds : preds_signature}.
+  Context {b : falsity_flag}.
+
+  Variables M N : model.
+
+ Theorem iso_impl_el_emb:
+    M ≅ N -> M ⪳ N.
+ Proof.
+   intros [f iso]; exists f.
+   intro phi. induction phi; try easy.
+   - apply (preserved_pred' _ pred_strong_preserved func_preserved).
+   - destruct b0; firstorder.
+   - destruct q; cbn; split; intros.
+     + destruct (morphism_surjective d) as [d' <-].
+       now rewrite (cons_comp_sat f ρ d' phi), <- IHphi.
+     + now rewrite IHphi, <- cons_comp_sat.
+ Qed.
 
 
 End iso_impl_el_emb.
+
+
