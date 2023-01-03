@@ -91,13 +91,16 @@ Section Iso_impl_elementary.
 End Iso_impl_elementary.
 
 
-Section Rel_impl.
+Section Basic_fact_Rel.
     Context {Σ_funcs : funcs_signature}.
     Context {Σ_preds : preds_signature}.
     Context {ff : falsity_flag}.
 
-    Fact function_rel_map {X Y} (R: X -> Y -> Prop) {n: nat} (v1: vec X n) (v2 v2': vec Y n):
-        function_rel R -> map_rel R v1 v2 -> map_rel R v1 v2' -> v2 = v2'.
+    Variables M N: model.
+    Variable R: M -> N -> Prop.
+
+    Fact function_rel_map {X Y} (F: X -> Y -> Prop) {n: nat} (v1: vec X n) (v2 v2': vec Y n):
+        function_rel F -> map_rel F v1 v2 -> map_rel F v1 v2' -> v2 = v2'.
     Proof.
         intros H1 H2.
         dependent induction H2; dependent destruction v2'; try easy.
@@ -108,7 +111,7 @@ Section Rel_impl.
         dependent destruction H0; eassumption.
     Qed.
 
-    Lemma In_rel_map  {M N: model} {ρ ρ'} (R: M -> N -> Prop) {n} (v: vec term n):
+    Lemma In_rel_map {ρ ρ' n} (v: vec term n):
       (forall t : term, In t v -> R (t ₜ[ M] ρ) (t ₜ[ N] ρ'))
     -> map_rel R (map (eval M interp' ρ) v) (map (eval N interp' ρ') v).
     Proof.
@@ -117,15 +120,14 @@ Section Rel_impl.
       all: apply H; now constructor.
     Qed.
 
-    Lemma term_preserved_rel {M N: model} {ρ ρ'} (R: M -> N -> Prop) (t: term) :
+    Lemma term_preserved_rel {ρ ρ'} (t: term) :
       (forall x: nat, R (ρ x) (ρ' x))
     -> isomorphism_rel R
-    -> preserve_func_rel R
     -> R (t ₜ[M] ρ) (t ₜ[N] ρ').
     Proof.
       induction t; intros; try easy.
       - apply H.
-      - destruct (H1 _ (map (eval _ interp' ρ) v)) as [v' [Hp Rvv']]; cbn.
+      - destruct (func_preserved_rel (map (eval _ interp' ρ) v)) as [v' [Hp Rvv']]; cbn.
         enough (v' = (map (eval _ interp' ρ') v)) as Heq.
         now rewrite <- Heq.
         eapply function_rel_map.
@@ -135,10 +137,9 @@ Section Rel_impl.
         intros; now apply IH.
     Qed.
 
-    Lemma term_vec_preserved_rel {M N: model} {ρ ρ'} (R: M -> N -> Prop) {n} (v: vec term n):
+    Lemma term_vec_preserved_rel {ρ ρ' n} (v: vec term n):
       (forall t: nat, R (ρ t) (ρ' t))
     -> isomorphism_rel R
-    -> preserve_func_rel R
     -> map_rel R (map (eval M interp' ρ) v) (map (eval N interp' ρ') v).
     Proof.
       induction v; cbn; constructor.
@@ -146,11 +147,9 @@ Section Rel_impl.
       now apply term_preserved_rel.
     Qed.
 
-
-    Lemma iso_impl_elementary_rel' `{falsity_flag} {M N: model} (R: M -> N -> Prop):
-        isomorphism_rel R
-        -> forall φ ρ ρ', (forall x, R (ρ x) (ρ' x))
-        -> M ⊨[ρ] φ <-> N ⊨[ρ'] φ.
+    Lemma iso_impl_elementary_rel': isomorphism_rel R
+    -> forall φ ρ ρ', (forall x, R (ρ x) (ρ' x))
+    -> M ⊨[ρ] φ <-> N ⊨[ρ'] φ.
     Proof using ff.
       intros iso.
       induction φ; cbn; intros. { easy. }
@@ -160,7 +159,6 @@ Section Rel_impl.
       eapply function_rel_map.
       destruct iso as [_ _ [h _]]. exact h. exact Rt.
       apply term_vec_preserved_rel; eauto.
-      apply func_preserved_rel.
     - destruct b0. rewrite (IHφ1 _ _ H), (IHφ2 _ _ H). easy.
     - destruct q. split; intros hp d.
       + destruct morphism_biject_rel as [[fu total] [inj sur]].
@@ -175,9 +173,17 @@ Section Rel_impl.
         exact (hp n).
     Qed.
 
-    Arguments iso_impl_elementary_rel' {_ _ _ _ _}.
+  End Basic_fact_Rel.
 
-    Theorem iso_impl_iso_rel {M N: model}:
+
+  Section Rel_impl.
+
+    Context {Σ_funcs : funcs_signature}.
+    Context {Σ_preds : preds_signature}.
+    Context {ff : falsity_flag}.
+    Variables M N: model.
+
+    Theorem iso_impl_iso_rel:
     M ≅ N -> M ≅ᵣ N.
     Proof.
       intros [h H]. exists (fun x y => h x = y); constructor.
@@ -188,25 +194,25 @@ Section Rel_impl.
       - specialize morphism_surjective as m;
         specialize morphism_injectived as i.
         split; split; eauto.
-        intros x y y'. intros; intuition congruence.
+        intros x y y'. congruence.
         intros x. now exists (h x).
         intros x y y' A B; apply i; congruence.
     Qed.
 
-    Theorem iso_impl_elementary_rel {M N: model}:
+    Theorem iso_impl_elementary_rel:
       M ≅ᵣ N -> M ≡ N.
     Proof.
       intros [h iso] phi cphi. split; try easy; intros asup env.
     - destruct morphism_biject_rel as [[func total] [inj sur]].
       destruct (sur (env O)) as [m _].
-      destruct (total m) as [n Rmn].
+      destruct (total m) as [n Rnm].
       apply (sat_closed _ _ (fun _ => n) cphi).
-      now apply (iso_impl_elementary_rel' _ (fun _ => m) (fun _ => n)).
+      now apply (@iso_impl_elementary_rel' _ _ _ _ _ _ iso phi (fun _ => m) (fun _ => n)).
     - destruct morphism_biject_rel as [[func total] [inj sur]].
       destruct (total (env O)) as [n _].
       destruct (sur n) as [m Rnm].
       apply (sat_closed _ _ (fun _ => m) cphi).
-      now apply (iso_impl_elementary_rel' _ (fun _ => m) (fun _ => n)).
+      now apply (@iso_impl_elementary_rel' _ _ _ _ _ _ iso phi  (fun _ => m) (fun _ => n)).
     Qed.
 
 End Rel_impl.
