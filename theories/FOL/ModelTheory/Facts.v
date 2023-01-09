@@ -29,7 +29,9 @@ Section Iso_impl_elementary.
     Context {Σ_preds : preds_signature}.
     Context {ff : falsity_flag}.
 
-    Lemma term_preserved {M N: model} {ρ ρ'} (h: M -> N) :
+    Variables M N: model.
+
+    Lemma term_preserved {ρ ρ'} (h: M -> N) :
           (forall x: nat, h (ρ x) = ρ' x)
         -> preserve_func h
         -> forall term: term, h (term ₜ[M] ρ) = term ₜ[N] ρ'.
@@ -48,7 +50,7 @@ Section Iso_impl_elementary.
         ∀ t, h (Ρ t) = Ρ' t
     *)
 
-    Lemma iso_impl_elementary' {M N: model} (h: M -> N):
+    Lemma iso_impl_elementary' (h: M -> N):
           isomorphism h
         -> forall φ ρ ρ', (forall x, h (ρ x) = ρ' x)
         -> M ⊨[ρ] φ <-> N ⊨[ρ'] φ.
@@ -75,13 +77,12 @@ Section Iso_impl_elementary.
         ∀ φ, ρ ⊨ φ <-> ρ' ⊨ φ
     *)
 
-    Arguments iso_impl_elementary' {_ _ _ _ _}.
+    Arguments iso_impl_elementary' {_ _ _}.
 
-    Theorem iso_impl_elementary {M N: model}: 
+    Theorem iso_impl_elementary: 
         M ≅ N -> M ≡ N.
     Proof.
         intros [h iso] phi cphi. split; try easy; intros asup env.
-
         - destruct (morphism_surjective (env O)) as [m _].
           apply (sat_closed _ _ (fun n => h m) cphi).
           now apply (iso_impl_elementary' (fun n => m) (fun n => h m)).

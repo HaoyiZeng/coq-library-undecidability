@@ -325,4 +325,3 @@ End TermModelIsCountable.
                 infinite X -> injective f -> exists N: model, N ⪳ M /\ same_cardinality N X.
 
 End Final. *)
-
