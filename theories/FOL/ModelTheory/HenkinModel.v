@@ -301,7 +301,7 @@ End TheWitness.
     Admitted.
 
 End DC. *)
-
+(*
 Section WithoutWitness.
 
     Existing Instance falsity_on.    
@@ -372,8 +372,7 @@ Section WithoutWitness.
             revert H; apply sat_ext.
             induction x; easy.
     Qed.
-
-End TheWitness.
+*)
 
 End TermModelIsCountable.
 
