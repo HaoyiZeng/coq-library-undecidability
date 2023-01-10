@@ -302,6 +302,79 @@ End TheWitness.
 
 End DC. *)
 
+Section WithoutWitness.
+
+    Existing Instance falsity_on.    
+
+    (* A nonempty model *)
+    Variable M: model. 
+    Hypothesis nonempty: M.
+
+    (* which satify the witness property *)
+    Variable phi_ : nat -> form.
+    Hypothesis Hphi : forall phi, exists n, phi_ n = phi.
+    Variable dep: nat -> M.
+    Hypothesis witness_prop_ : 
+        forall n ρ, M ⊨[(dep n).:ρ] (((phi_ n)) → ((∀ phi_ n)[↑])).
+
+    Definition morphism__d: term -> M := eval M interp' dep.
+
+    Instance interp_term__d: interp term :=
+        {| i_func := func; i_atom := fun P v => atom P v ∈ theory_under dep|}.
+    Instance N__d: model :=
+        { domain := term; interp' := interp_term__d }.
+
+
+    Lemma eval_eval__d (ρ: env term) (t: term):
+        (t ₜ[N__d] ρ) ₜ[M] dep =
+                 t ₜ[M] (fun x => (ρ x) ₜ[M] dep).
+    Proof.
+          induction t; try easy; cbn.
+          apply f_equal; rewrite map_map; apply map_ext_in.
+          now apply IH.
+    Qed.
+
+    Lemma map_eval_eval__d (ρ: env term) {n} (v: t term n):
+            map (fun t => (t ₜ[N__d] ρ) ₜ[M] dep) v =
+            map (fun t => t ₜ[M] (fun x => (ρ x) ₜ[M] dep)) v.
+    Proof.
+        apply map_ext, eval_eval__d.
+    Qed.
+
+
+    Theorem LS_downward_under_witness: 
+        exists (N: model), a_coutable_model N /\ N ⪳ M.
+    Proof.
+        exists N__d. split. {apply term_model_countable. }
+        exists morphism__d; intros φ.
+        induction φ using form_ind_falsity; intro; try easy.
+        - cbn; now rewrite map_map, map_eval_eval__d.
+        - destruct b0; cbn; intuition.
+        - destruct q; split.
+          + intros H d; destruct (Hphi φ) as [i phi].
+            cbn in H. 
+          specialize (@witness_prop_ i (ρ >> morphism__d)).
+          cbn in witness_prop_.
+          rewrite phi in witness_prop_.
+          cbn in witness_prop_.
+         
+
+          destruct (@Hwitness_prop i) as [witness_closed witness_prop__i].
+
+            specialize (H (wit_ i)). 
+            apply IHφ in H; unfold witness_prop_ in witness_prop__i; rewrite phi in witness_prop__i.
+            eapply witness_prop__i.
+            revert H; setoid_rewrite sat_comp; cbn.
+            eapply sat_ext; induction x; cbn. 2: trivial.
+            now apply bounded_eval_t with 0, witness_closed.
+          + intros H d; rewrite (IHφ (d.:ρ)).
+            specialize (H (morphism d)).
+            revert H; apply sat_ext.
+            induction x; easy.
+    Qed.
+
+End TheWitness.
+
 End TermModelIsCountable.
 
 
