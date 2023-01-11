@@ -1,5 +1,6 @@
 Require Import Undecidability.FOL.ModelTheory.Core.
 Require Import Undecidability.FOL.ModelTheory.HenkinModel.
+Require Import Undecidability.FOL.Syntax.BinSig.
 
 Definition dec (X: Type) : Type := X + (X -> False).
 Notation decidable p := (forall x, dec (p x)).
@@ -31,8 +32,7 @@ Section WO.
         T n -> T 0.
     Proof.
         induction n as [|n IH].
-        - auto.
-        - intros H. apply IH. apply T_step, H.
+        auto. intros H. apply IH. apply T_step, H.
     Qed.
 
     Lemma V n :
@@ -48,16 +48,14 @@ Section WO.
                             match p_dec n with
                             inl H => _ | inr H => _
                             end).
-        - exact (Sig p n H).
-        - exact (F (S n) (phi H)).
+        exact (Sig p n H). exact (F (S n) (phi H)).
     Qed.
 
     Theorem W :
         ex p -> sig p.
     Proof.
         intros H. apply W' with 0.
-        destruct H as [n H].
-        apply V with n, H.
+        destruct H as [n H]. apply V with n, H.
     Qed.
 
 End WO.
@@ -80,21 +78,6 @@ Section DC.
         (forall x, exists y, R x y) -> forall w,
             (exists f : nat -> A, f 0 = w /\ forall n, R (f n) (f (S n))).
 
-    Definition sys_func := False.
-    Inductive sys_pred := lt: sys_pred.
-
-    Instance Σf: funcs_signature :=
-        {|
-            syms := sys_func;
-            ar_syms := fun _ => 0
-        |}.
-
-    Instance Σp: preds_signature :=
-        {|
-            preds := sys_pred;
-            ar_preds := fun _ => 2
-        |}.
-
     Instance interp__A : interp A :=
     {
         i_func := fun F v => match F return A with end;
@@ -108,10 +91,10 @@ Section DC.
     }.
 
     Definition total_form :=
-        ∀ (¬ ∀ ¬ (atom _ _ _ _ lt (cons _ ($1) _ (cons _ ($0) _ (nil _))))).
+        ∀ (¬ ∀ ¬ (atom _ _ _ _ tt (cons _ ($1) _ (cons _ ($0) _ (nil _))))).
 
     Definition forfor_form :=
-        (atom _ _ _ _ lt (cons _ ($1) _ (cons _ ($0) _ (nil _)))).
+        (atom _ _ _ _ tt (cons _ ($1) _ (cons _ ($0) _ (nil _)))).
 
     Lemma total_ex:
         (forall x: A, exists y: A, R x y) <-> forall x, ~ (forall y, ~ R x y).
@@ -172,7 +155,7 @@ Section DC.
         specialize (@total_sat ((fun _ => n) >> h) total ) as total'.
         rewrite <- (ele_el__h total_form (fun _ => n)) in total'.
         assert (exists R', (forall x: N, (exists y: N, R' x y)) /\ (forall α β, R' α β <-> R (h α) (h β))).
-        exists (fun x y => lt ₚ[ N] cons N x 1 (cons N y 0 (nil N))).
+        exists (fun x y => tt ₚ[ N] cons N x 1 (cons N y 0 (nil N))).
         split. intro x. apply classical_logic.
         now specialize(total' x).
         intros α β. rewrite forfor_sat.
@@ -188,3 +171,6 @@ Section DC.
 
 
 End DC.
+
+(* Full Syntax
+   Pred version *)
