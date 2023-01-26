@@ -168,11 +168,8 @@ Section TheWitness.
     (* which satify the witness property *)
     Variable phi_ : nat -> form.
     Hypothesis Hphi : forall phi, exists n, phi_ n = phi.
-    Variable wit_: nat -> term.
-    Definition witness_prop_ n := 
-         M ⊨[_] (((phi_ n)[(wit_ n)..]) → ∀ (phi_ n)).
-    Hypothesis Hwitness_prop: 
-        forall n, closed_term (wit_ n) /\ witness_prop_ n.
+    Hypothesis witness_prop_ : 
+         forall n, exists w, M ⊨[_] (((phi_ n)[w..]) → ∀ (phi_ n)) /\ closed_term w.
 
     Definition h: env M := fun _ => nonempty.
     Definition morphism: term -> M := eval M interp' h.
@@ -211,8 +208,9 @@ Section TheWitness.
         - destruct b0; cbn; intuition.
         - destruct q; split.
           + intros H d; destruct (Hphi φ) as [i phi].
-            specialize (H (wit_ i)); destruct (@Hwitness_prop i) as [witness_closed witness_prop__i].
-            apply IHφ in H; unfold witness_prop_ in witness_prop__i; rewrite phi in witness_prop__i.
+            destruct (witness_prop_ i) as [wit__i [witness_prop__i witness_closed]].
+            eapply IHφ in H. 
+            rewrite phi in witness_prop__i.
             eapply witness_prop__i.
             revert H; setoid_rewrite sat_comp; cbn.
             eapply sat_ext; induction x; cbn. 2: trivial.
@@ -225,175 +223,4 @@ Section TheWitness.
 
 End TheWitness.
 
-
-(* Section DC.
-    Variable M: model. 
-    Hypothesis nonempty: M.
-    (* A nonempty model *)
-
-
-    Variable phi_ : nat -> form.
-    Hypothesis Hphi : forall phi, exists n, phi_ n = phi.
-    Variable wit_: nat -> option term.
-    (* Maybe with the countable choice? We have *)
-    Hypothesis choiceWit:
-        forall n, match wit_ n with
-          | None => forall t, ~ (bounded_t 0 t /\ M ⊨[_] (∀ (phi_ n) → ((phi_ n)[t..])))
-          | Some t => bounded_t 0 t /\ M ⊨[_] (((phi_ n)[t..]) → ∀ (phi_ n))
-        end.
-
-    Variable inaccessible: M.
-    Hypothesis inaccessible_prop: forall t, 
-        bounded_t 0 t -> ~ forall ρ, (t ₜ[M] ρ) = inaccessible.
-
-    Definition h': env M :=
-        fun n => match wit_ n with
-            | None => inaccessible
-            | Some t => t ₜ[M] (fun _ => nonempty)
-            end.
-    Definition morphism': term -> M := eval M interp' h'.
-
-    Instance interp_term': interp term :=
-        {| i_func := func; i_atom := fun P v => atom P v ∈ theory_under h'|}.
-    Instance N': model :=
-        { domain := term; interp' := interp_term' }.
-
-    Lemma eval_eval' (ρ: env term) (t: term):
-        (t ₜ[N'] ρ) ₜ[M] h' = 
-                 t ₜ[M] (fun x => (ρ x) ₜ[M] h'). 
-    Proof.
-          induction t; try easy; cbn. 
-          apply f_equal; rewrite map_map; apply map_ext_in.
-          now apply IH.
-    Qed.
-
-    Lemma map_eval_eval' (ρ: env term) {n} (v: t term n):
-        map (fun t => (t ₜ[N'] ρ) ₜ[M] h') v =
-        map (fun t => t ₜ[M] (fun x => (ρ x) ₜ[M] h')) v.
-    Proof.
-    apply map_ext, eval_eval'.
-    Qed.
-
-
-    Theorem LS_downward'':
-        exists (N: model) (h: N -> M), elementary_homomorphism h.
-    Proof.
-        exists N', morphism'; intros φ. 
-        induction φ using form_ind_falsity; intro; try easy. 
-        - cbn; now rewrite map_map, map_eval_eval'.
-        - destruct b0; cbn; intuition.
-        - destruct q; split. 
-          + intros H d; destruct (Hphi φ) as [i phi].
-            specialize (H (var i)); specialize (@choiceWit i).
-            apply IHφ in H; rewrite phi in choiceWit.
-            destruct (wit_ i) eqn: E.
-            ++ eapply choiceWit; cbn.
-               revert H; setoid_rewrite sat_comp; cbn.
-               eapply sat_ext; induction x; cbn. 2: trivial.
-               destruct choiceWit as [witness_closed _].
-               unfold h'. rewrite E. 
-               now apply bounded_eval_t with 0, witness_closed.
-            ++ admit.
-          + intros H d; rewrite (IHφ (d.:ρ)).
-            specialize (H (morphism' d)).
-            revert H; apply sat_ext.
-            induction x; easy.
-    Admitted.
-
-End DC. *)
-(*
-Section WithoutWitness.
-
-    Existing Instance falsity_on.    
-
-    (* A nonempty model *)
-    Variable M: model. 
-    Hypothesis nonempty: M.
-
-    (* which satify the witness property *)
-    Variable phi_ : nat -> form.
-    Hypothesis Hphi : forall phi, exists n, phi_ n = phi.
-    Variable dep: nat -> M.
-    Hypothesis witness_prop_ : 
-        forall n ρ, M ⊨[(dep n).:ρ] (((phi_ n)) → ((∀ phi_ n)[↑])).
-
-    Definition morphism__d: term -> M := eval M interp' dep.
-
-    Instance interp_term__d: interp term :=
-        {| i_func := func; i_atom := fun P v => atom P v ∈ theory_under dep|}.
-    Instance N__d: model :=
-        { domain := term; interp' := interp_term__d }.
-
-
-    Lemma eval_eval__d (ρ: env term) (t: term):
-        (t ₜ[N__d] ρ) ₜ[M] dep =
-                 t ₜ[M] (fun x => (ρ x) ₜ[M] dep).
-    Proof.
-          induction t; try easy; cbn.
-          apply f_equal; rewrite map_map; apply map_ext_in.
-          now apply IH.
-    Qed.
-
-    Lemma map_eval_eval__d (ρ: env term) {n} (v: t term n):
-            map (fun t => (t ₜ[N__d] ρ) ₜ[M] dep) v =
-            map (fun t => t ₜ[M] (fun x => (ρ x) ₜ[M] dep)) v.
-    Proof.
-        apply map_ext, eval_eval__d.
-    Qed.
-
-
-    Theorem LS_downward_under_witness: 
-        exists (N: model), a_coutable_model N /\ N ⪳ M.
-    Proof.
-        exists N__d. split. {apply term_model_countable. }
-        exists morphism__d; intros φ.
-        induction φ using form_ind_falsity; intro; try easy.
-        - cbn; now rewrite map_map, map_eval_eval__d.
-        - destruct b0; cbn; intuition.
-        - destruct q; split.
-          + intros H d; destruct (Hphi φ) as [i phi].
-            cbn in H. 
-          specialize (@witness_prop_ i (ρ >> morphism__d)).
-          cbn in witness_prop_.
-          rewrite phi in witness_prop_.
-          cbn in witness_prop_.
-         
-
-          destruct (@Hwitness_prop i) as [witness_closed witness_prop__i].
-
-            specialize (H (wit_ i)). 
-            apply IHφ in H; unfold witness_prop_ in witness_prop__i; rewrite phi in witness_prop__i.
-            eapply witness_prop__i.
-            revert H; setoid_rewrite sat_comp; cbn.
-            eapply sat_ext; induction x; cbn. 2: trivial.
-            now apply bounded_eval_t with 0, witness_closed.
-          + intros H d; rewrite (IHφ (d.:ρ)).
-            specialize (H (morphism d)).
-            revert H; apply sat_ext.
-            induction x; easy.
-    Qed.
-*)
-
 End TermModelIsCountable.
-
-
-(* Section Final.
-
-    (* 
-        Upward will change the signature 
-        Then given the model over this new signature
-        Downward can provide the term model over term
-        wich has the same cardinality as X.
-    *)
-
-    Context {Σf : funcs_signature} {Σp : preds_signature}.
-
-    Hypothesis LS_weaker: 
-        forall (M: model) X (f: X -> M), infinite X -> injective f ->
-            exists N: model, N ≡ M /\ same_cardinality N X.
-
-    Hypothesis LS_stronger: 
-        DC <-> forall (M: model) X (f: X -> M), 
-                infinite X -> injective f -> exists N: model, N ⪳ M /\ same_cardinality N X.
-
-End Final. *)

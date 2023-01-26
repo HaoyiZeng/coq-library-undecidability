@@ -943,3 +943,4 @@ FOL/ModelTheory/HenkinModel.v
 FOL/ModelTheory/Facts.v
 FOL/ModelTheory/ModelNotation.v
 FOL/ModelTheory/DependentChoice.v
+FOL/ModelTheory/FullSyntax.v
