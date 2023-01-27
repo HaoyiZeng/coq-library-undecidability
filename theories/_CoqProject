@@ -942,5 +942,6 @@ FOL/ModelTheory/Core.v
 FOL/ModelTheory/HenkinModel.v 
 FOL/ModelTheory/Facts.v
 FOL/ModelTheory/ModelNotation.v
-FOL/ModelTheory/DependentChoice.v
-FOL/ModelTheory/FullSyntax.v
+FOL/ModelTheory/DCFragment.v
+FOL/ModelTheory/DCFull.v
+FOL/ModelTheory/SearchNat.v
