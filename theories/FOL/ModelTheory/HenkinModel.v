@@ -7,7 +7,7 @@ Local Set Implicit Arguments.
 (* Gives the proof that any model with term as domain is countable. 
    It may be possible to generalize to arbitrary cardinality depandent
    on signature. *)
-Section TermModelIsCountable.
+Section TermIsCountable.
     Context {Σf : funcs_signature} {Σp : preds_signature}.
     Existing Instance falsity_on.
 
@@ -156,31 +156,22 @@ End HenkinModel.
    ∀ M: model, M satisfy the witness property → ∃ N: model, N ⪳ M and N is countable.
 *)
 
-Section TheWitness.
+Section TermModel.
 
     Definition closed_term t := bounded_t 0 t.
-    Existing Instance falsity_on.    
+    Existing Instance falsity_on.  
 
-    (* A nonempty model *)
-    Variable M: model. 
-    Hypothesis nonempty: M.
+    Variable M: model.
+    Variable h: nat -> M.
 
-    (* which satify the witness property *)
-    Variable phi_ : nat -> form.
-    Hypothesis Hphi : forall phi, exists n, phi_ n = phi.
-    Hypothesis witness_prop_ : 
-         forall n, exists w, M ⊨[_] (((phi_ n)[w..]) → ∀ (phi_ n)) /\ closed_term w.
-
-    Definition h: env M := fun _ => nonempty.
     Definition morphism: term -> M := eval M interp' h.
     Definition theory_under h: theory :=
         fun phi => M ⊨[h] phi.
-
+    
     Instance interp_term: interp term :=
         {| i_func := func; i_atom := fun P v => atom P v ∈ theory_under h|}.
     Instance N: model :=
         { domain := term; interp' := interp_term }.
-
 
     Lemma eval_eval (ρ: env term) (t: term):
         (t ₜ[N] ρ) ₜ[M] h =
@@ -198,19 +189,88 @@ Section TheWitness.
         apply map_ext, eval_eval.
     Qed.
 
-    Theorem LS_downward_under_witness: 
-        exists (N: model), a_coutable_model N /\ N ⪳ M.
+    Lemma eval_var t: t ₜ[N] var = t.
     Proof.
-        exists N. split. {apply term_model_countable. }
-        exists morphism; intros φ.
+        induction t; cbn. easy.
+        assert (map (eval _ _ var) v = map (fun x => x) v).
+        apply map_ext_in, IH.
+        now rewrite H, map_id.
+    Qed.
+
+    Lemma term_subst_eval φ ξ: N ⊨[var] φ[ξ] <-> N ⊨[ξ] φ.
+    Proof.
+        rewrite (sat_comp (interp' N) var ξ φ).
+        apply sat_ext.
+        intro x; apply eval_var.
+    Qed.
+
+    Lemma term_subst_up φ ρ w:
+        N ⊨[$w .: ρ] φ <-> N ⊨[$w..] φ[up ρ].
+    Proof.
+        rewrite <- term_subst_eval, <- (term_subst_eval φ[up ρ]).
+        enough (φ[$w .: ρ] = φ[up ρ][$w..]) by now rewrite H.
+        rewrite subst_comp; apply subst_ext.
+        induction n; cbn. easy.
+        unfold ">>"; rewrite subst_term_comp.
+        now rewrite subst_term_id. 
+    Qed.
+
+    Variable phi_ : nat -> form.
+    Hypothesis Hphi : forall phi, exists n, phi_ n = phi.
+
+    Section TarskiVaughtTest.
+
+    Definition full_witness_condition :=
+        forall phi, exists w, M ⊨[(h w).:h] phi -> M ⊨[h] ∀ phi.
+
+    Theorem Tarski_Vaught_Test: 
+        full_witness_condition -> exists (N: model), a_coutable_model N /\ N ⪳ M.
+    Proof.
+        intro fix_h. exists N. split. {apply term_model_countable. }
+        exists morphism. intros φ. induction φ using form_ind_subst; intro; try easy.
+        - cbn; now rewrite map_map, map_eval_eval.
+        - destruct b0; cbn; intuition.
+        - destruct q; split.
+            + intros H'; destruct (Hphi (φ[up ρ])) as [i phi].
+            destruct (@fix_h (φ[up ρ])) as [wit h_prop].
+            unfold morphism; rewrite <- sat_comp.
+            apply h_prop.
+            cbn in H'; specialize (H' ($ wit)).
+            rewrite term_subst_up, H in H'.
+            assert(M ⊨[ $wit.. >> morphism] φ[up ρ] <-> M ⊨[h wit .: (var >> morphism)] φ[up ρ]).
+            apply sat_ext; induction x; cbn; easy.
+            now revert H'; apply sat_ext; induction x.
+            + intros H' d. 
+            rewrite <- subst_var with φ.
+            rewrite (H var (d.:ρ)).
+            specialize (H' (morphism d)).
+            rewrite subst_var.
+            revert H'; apply sat_ext.
+            now induction x.
+    Qed.
+
+    End TarskiVaughtTest.
+
+    Section WitnessProperty.
+
+    (* which satify the witness property *)
+
+    Definition witness_prop_ := 
+         forall phi, exists w, M ⊨[_] ((phi [w..]) → ∀ phi) /\ closed_term w. 
+
+    Theorem LS_downward_under_witness: 
+        witness_prop_ -> exists (N: model) (mor: N -> M),
+            a_coutable_model N /\ N ⪳[mor] M /\ forall i, exists n, h i = mor n.
+    Proof.
+        intro witness_prop_.
+        exists N, morphism. split. {apply term_model_countable. } split. intros φ.
         induction φ using form_ind_falsity; intro; try easy.
         - cbn; now rewrite map_map, map_eval_eval.
         - destruct b0; cbn; intuition.
         - destruct q; split.
           + intros H d; destruct (Hphi φ) as [i phi].
-            destruct (witness_prop_ i) as [wit__i [witness_prop__i witness_closed]].
-            eapply IHφ in H. 
-            rewrite phi in witness_prop__i.
+            destruct (witness_prop_ φ) as [wit__i [witness_prop__i witness_closed]].
+            eapply IHφ in H.
             eapply witness_prop__i.
             revert H; setoid_rewrite sat_comp; cbn.
             eapply sat_ext; induction x; cbn. 2: trivial.
@@ -219,8 +279,33 @@ Section TheWitness.
             specialize (H (morphism d)).
             revert H; apply sat_ext.
             induction x; easy.
+        - intro i; now exists ($ i). 
     Qed.
 
-End TheWitness.
+    End WitnessProperty.
 
-End TermModelIsCountable.
+
+End TermModel.
+
+
+    (* Consider a countable signature, and a function enumerate all formulas *)
+    Variable phi_ : nat -> form.
+    Hypothesis Hphi : forall phi, exists n, phi_ n = phi.
+
+    Corollary LS_countable (M: model): 
+    forall m: M, witness_prop_ M ->
+        exists (N: model), a_coutable_model N /\ (exists h: N -> M, N ⪳[h] M /\ exists n: N, h n = m).
+    Proof.
+        intros m wit.
+        destruct (@LS_downward_under_witness M (fun _ => m) phi_ Hphi wit) as (N & h & C__N & P & index).
+        exists N; split. {easy. }
+        exists h. split. {easy. }
+        destruct (index O) as [x R].
+        now exists x. 
+    Qed.
+
+
+End TermIsCountable.
+
+
+

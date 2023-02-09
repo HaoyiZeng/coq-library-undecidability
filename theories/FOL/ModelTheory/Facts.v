@@ -317,4 +317,16 @@ Section iso_impl_el_emb.
 
 End iso_impl_el_emb.
 
+Section trans_elem.
+
+  Theorem trans_elem `{funcs_signature} `{preds_signature}
+    (A B C: model): A ⪳ B -> B ⪳ C -> A ⪳ C.
+  Proof.
+    intros [h P] [g P']; exists (h>>g).
+    intros phi ρ; now rewrite (P phi ρ), (P' phi).
+  Qed.
+  
+
+  
+End trans_elem.
 

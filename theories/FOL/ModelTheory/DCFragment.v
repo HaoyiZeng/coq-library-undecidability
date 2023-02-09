@@ -23,7 +23,7 @@ Section DC.
 
     Definition LS_countable :=
         forall (Σf : funcs_signature) (Σp : preds_signature) (M: model), forall m,
-            exists (N: model), a_coutable_model N /\ (exists h: N -> M, elementary_homomorphism h /\ exists n: N, h n = m).
+            exists (N: model), a_coutable_model N /\ (exists h: N -> M, N ⪳[h] M /\ exists n: N, h n = m).
 
     Instance interp__A : interp A :=
     {
@@ -139,3 +139,4 @@ Section DC.
     End dec_R.
 
 End DC.
+

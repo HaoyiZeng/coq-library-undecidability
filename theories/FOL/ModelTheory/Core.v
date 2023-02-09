@@ -152,3 +152,4 @@ Notation "M ≡ N"  := (elementary_equivalence M N) (at level 30).
 Notation "M ≅ N"  := (exists h: M -> N, isomorphism h) (at level 30).
 Notation "M ≅ᵣ N" := (exists R: M -> N -> Prop, isomorphism_rel R) (at level 30).
 Notation "N ⪳ M"  := (exists h: N -> M, elementary_homomorphism h) (at level 30).
+Notation "N ⪳[ h ] M"  := (@elementary_homomorphism _ _ _ N M h) (at level 30).
