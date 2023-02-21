@@ -221,7 +221,7 @@ Section TermModel.
     Section TarskiVaughtTest.
 
     Definition full_witness_condition :=
-        forall phi, exists w, M ⊨[(h w).:h] phi -> M ⊨[h] ∀ phi.
+        forall phi, exists w: nat, M ⊨[h w.:h] phi -> M ⊨[h] ∀ phi.
 
     Theorem Tarski_Vaught_Test: 
         full_witness_condition -> exists (N: model), a_coutable_model N /\ N ⪳ M.
@@ -304,8 +304,52 @@ End TermModel.
         now exists x. 
     Qed.
 
+    
+
 
 End TermIsCountable.
+
+(* Section try_uni.
+
+    Context {Σf : funcs_signature} {Σp : preds_signature}.
+
+    Notation "'Σ' x .. y , p" :=
+    (sigT (fun x => .. (sigT (fun y => p)) ..))
+        (at level 200, x binder, right associativity,
+        format "'[' 'Σ'  '/  ' x  ..  y ,  '/  ' p ']'")
+  : type_scope.
+
+  (* Extending the range with a computable function *)
+    Lemma extending_range (M: model) φ h h':
+        Σ k, (forall n, n < k -> Σ m, h n = h' m) -> 
+            exists σ, M ⊨[h] φ <-> M ⊨[h'] φ[σ].
+    Proof.
+        intros.
+        destruct (find_bounded φ) as [k C].
+        exists k. intro H.
+        unshelve eexists.
+        intro x.
+        destruct (Compare_dec.lt_dec x k).
+        exact ($ (projT1 (H x l))).
+        exact ($ x).
+        rewrite sat_comp.
+        apply (bound_ext _ C). intros x' l; cbn.
+        destruct (Compare_dec.lt_dec x' k).
+        specialize (projT2 (H x' l0)) as Cond.
+        easy. congruence.
+    Qed.
+
+    
+End try_uni. *)
+
+
+
+
+
+
+
+
+
 
 
 
