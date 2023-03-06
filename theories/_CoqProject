@@ -945,3 +945,4 @@ FOL/ModelTheory/ModelNotation.v
 FOL/ModelTheory/DCFragment.v
 FOL/ModelTheory/DCFull.v
 FOL/ModelTheory/SearchNat.v
+FOL/ModelTheory/Construction.v
