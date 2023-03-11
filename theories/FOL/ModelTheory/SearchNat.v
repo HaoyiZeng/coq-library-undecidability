@@ -1,5 +1,5 @@
-From Coq Require Import Arith Lia.
-
+From Coq Require Export Arith Lia.
+Require Import PeanoNat.
 
 Definition dec (X: Type) : Type := X + (X -> False).
 Definition logical_dec (X: Prop): Prop := X \/ (X -> False).
@@ -160,7 +160,7 @@ Section WO.
 
 End WO.
 
-Definition DC_func {A} {R: A -> A -> Prop}  :=
+Definition DC_func {A} {R: A -> A -> Prop} :=
     (forall x, exists y, R x y) -> forall w,
          (exists f : nat -> A, f 0 = w /\ forall n, R (f n) (f (S n))).
 
@@ -298,3 +298,57 @@ Qed.
 
 
 End DC_pred_least_over_nat.
+
+
+
+Section StrongInduction.
+
+  Variable P: nat -> Type.
+
+  (** The stronger inductive hypothesis given in strong induction. The standard
+  [nat ] induction principle provides only n = pred m, with [P 0] required
+  separately. *)
+  Hypothesis IH : forall m, (forall n, n < m -> P n) -> P m.
+
+  Lemma P0 : P 0.
+  Proof.
+    apply IH; intros.
+    exfalso; inversion H.
+  Qed.
+
+  Hint Resolve P0.
+
+  Lemma pred_increasing : forall n m,
+      n <= m ->
+      Nat.pred n <= Nat.pred m.
+  Proof.
+    induction n; cbn; intros.
+    apply le_0_n.
+    induction H; subst; cbn; eauto.
+    destruct m; eauto.
+  Qed.
+
+  Hint Resolve le_S_n.
+
+  (** * Strengthen the induction hypothesis. *)
+
+  Local Lemma strong_induction_all : forall n,
+      (forall m, m <= n -> P m).
+  Proof.
+    induction n; intros.
+    assert (m = 0) as -> by lia; easy.
+    apply IH.
+    intros.
+    apply IHn.
+    lia.
+  Qed.
+
+  Theorem strong_induction : forall n, P n.
+  Proof.
+    eauto using strong_induction_all.
+  Qed.
+
+End StrongInduction.
+
+Tactic Notation "strong" "induction" ident(n) := induction n using strong_induction.
+

@@ -249,6 +249,32 @@ Section TermModel.
             now induction x.
     Qed.
 
+    Theorem Tarski_Vaught_Test': 
+        full_witness_condition -> exists (N: model), N ⪳ M.
+    Proof.
+        intro fix_h. exists N. 
+        exists morphism. intros φ. induction φ using form_ind_subst; intro; try easy.
+        - cbn; now rewrite map_map, map_eval_eval.
+        - destruct b0; cbn; intuition.
+        - destruct q; split.
+            + intros H'; destruct (Hphi (φ[up ρ])) as [i phi].
+            destruct (@fix_h (φ[up ρ])) as [wit h_prop].
+            unfold morphism; rewrite <- sat_comp.
+            apply h_prop.
+            cbn in H'; specialize (H' ($ wit)).
+            rewrite term_subst_up, H in H'.
+            assert(M ⊨[ $wit.. >> morphism] φ[up ρ] <-> M ⊨[h wit .: (var >> morphism)] φ[up ρ]).
+            apply sat_ext; induction x; cbn; easy.
+            now revert H'; apply sat_ext; induction x.
+            + intros H' d. 
+            rewrite <- subst_var with φ.
+            rewrite (H var (d.:ρ)).
+            specialize (H' (morphism d)).
+            rewrite subst_var.
+            revert H'; apply sat_ext.
+            now induction x.
+    Qed.
+
     End TarskiVaughtTest.
 
     Section WitnessProperty.
