@@ -275,6 +275,7 @@ Section TermModel.
             now induction x.
     Qed.
 
+
     End TarskiVaughtTest.
 
     Section WitnessProperty.
@@ -310,9 +311,7 @@ Section TermModel.
 
     End WitnessProperty.
 
-
 End TermModel.
-
 
     (* Consider a countable signature, and a function enumerate all formulas *)
     Variable phi_ : nat -> form.
@@ -325,12 +324,10 @@ End TermModel.
         intros m wit.
         destruct (@LS_downward_under_witness M (fun _ => m) phi_ Hphi wit) as (N & h & C__N & P & index).
         exists N; split. {easy. }
-        exists h. split. {easy. }
+        exists h; split. {easy. }
         destruct (index O) as [x R].
         now exists x. 
     Qed.
-
-
 
 End TermIsCountable.
 

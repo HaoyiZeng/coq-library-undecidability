@@ -31,8 +31,7 @@ Section Construction.
     Proof.
         intros H φ.
         exists (fun x => $ (projT1 (H x))).
-        rewrite sat_comp.
-        split.
+        rewrite sat_comp; split.
         apply sat_ext.
         all: intro x; cbn; now destruct (H x).
     Qed.
@@ -120,28 +119,6 @@ Section Construction.
     End incl_prop.
 
     Section incl_Path.
-(*     
-
-
-    Hypothesis dis_M: forall x y: M, (x = y) + (~ (x = y)).
-
-    Lemma change (ρ ρ': env M): (forall x, exists y, ρ x = ρ' y) -> ρ ≼ ρ'.
-    Proof.
-        intros H x.
-        apply W.
-        intro x'.
-        apply dis_M.
-        exact (H x).
-    Qed.
-
-    Lemma change_k (ρ ρ': env M) k: (forall x, x < k -> exists y, ρ x = ρ' y) -> ρ ≼[k] ρ'.
-    Proof.
-        intros H x Lx.
-        apply W.
-        intro x'.
-        apply dis_M.
-        exact (H x Lx).
-    Qed. *)
 
     Variable F: nat -> nat -> M.
 
@@ -219,16 +196,9 @@ Section Construction.
         now intro n; eapply wit_rel_comp_implies_incl.
     Qed.
 
-    Variable encode: nat -> nat -> nat.
-    Variable π__1: nat -> nat.
-    Variable π__2: nat -> nat.
-
-    Hypothesis cantor_paring: forall x, encode (π__1 x) (π__2 x) = x.
-    Hypothesis cantor_left: forall x y, π__1 (encode x y) = x.
-    Hypothesis cantor_right: forall x y, (π__2 (encode x y)) = y.
+    Opaque encode_p. 
 
     Definition fixed x := F (π__1 x) (π__2 x).
-
 
     Lemma union_incl n: (F n) ≼ fixed.
     Proof.
@@ -299,52 +269,150 @@ numbers where the inductive hypothesis includes all smaller natural numbers. *)
         - now exists x.
     Qed.
 
+    End Fixed_point.
+
+    Section wit_rel_by_DC.
+
+    Definition Even n := Σ m, n = 2 * m.
+    Definition Odd n := Σ m, n = 2 * m + 1.
+    Definition Even_Odd_dec n : Even n + Odd n.
+    Proof.
+        induction n as [|n [H1|H1]]; [left; exists 0; lia|..].
+        - right; destruct H1 as [k H]; exists k; lia.
+        - left; destruct H1 as [k H]; exists (S k); lia.
+    Defined.
+
+    Lemma not_Even_Odd_both n: 
+         (Even n) * (Odd n) -> False.
+    Proof.
+        intros ([k Pk] &[t Pt]); lia.
+    Qed.
+
+    (* If the signature is countable *)
+    Variable phi_ : nat -> form.
+    Variable nth_ : form -> nat.
+    Hypothesis Hphi : forall phi,  phi_ (nth_ phi) = phi.
+
+    Definition FunctionalCountableChoice_on {A} :=
+    forall (R:nat-> A->Prop),
+        (forall n, exists y, R n y) ->
+        (exists f : nat -> A, forall n, R n (f n)).
+
+    Hypothesis DC: forall {A} R, total_rel R 
+        -> forall w, exists F: nat -> A, F 0 = w /\ forall n, R (F n) (F (S n)).
+
+    Notation FunctionalCountableChoice :=
+        (forall A : Type, @FunctionalCountableChoice_on A).
+
+    Theorem functional_countable_choice:
+        FunctionalCountableChoice.
+     Proof.
+       intros A R H0.
+       set (R' (p q:nat*A) := fst q = S (fst p) /\ R (fst p) (snd q)).
+       destruct (H0 0) as (y0,Hy0).
+       destruct (@DC (nat*A)) with(R:=R') (w:=(0,y0)) as (f,(Hf0,HfS)).
+       - intro x; destruct (H0 (fst x)) as (y,Hy).
+         exists (S (fst x),y).
+         red. auto.
+       - assert (Heq:forall n, fst (f n) = n).
+         + induction n.
+           * rewrite Hf0; reflexivity.
+           * specialize HfS with n; destruct HfS as (->,_); congruence.
+         + exists (fun n => snd (f (S n))).
+           intro n'. specialize HfS with n'.
+           destruct HfS as (_,HR).
+           rewrite Heq in HR.
+           assumption.
+     Qed.
+
+    Definition AC_form: forall {B} (R: form -> B -> Prop), total_rel R 
+        -> exists F: form -> B, forall x, R x (F x).
+    Proof.
+        intros.
+        set (R' n := R (phi_ n)).
+        assert (total_rel R') as H'. intro x.
+        now destruct (H (phi_ x)) as [b Pb]; exists b.
+        destruct (functional_countable_choice H') as [f Pf].
+        exists (fun fm => f (nth_ fm)).
+        intro x; specialize (Pf (nth_ x)).
+        unfold R' in Pf.
+        now rewrite (Hphi x) in Pf.
+    Qed.
+
+    Hypothesis EM: forall p, p \/ ~ p.
+
+    Lemma drinker_paradox ρ φ:
+        M ⊨[ρ] (∀ φ) \/ exists m, (~ M ⊨[m .: ρ] φ).
+    Proof.
+        destruct (EM (exists m, (~ M ⊨[m .: ρ] φ))); [now right| left; intro m].
+        destruct (EM (M ⊨[ m .: ρ] φ)); [easy| exfalso].
+        now apply H; exists m.
+    Qed.
+
+    Definition AC_app: 
+        forall ρ, exists (W: nat -> M), forall φ, exists w, M ⊨[W w.:ρ] φ -> M ⊨[ρ] ∀ φ.
+    Proof.
+        intros.
+        destruct (@AC_form M (fun phi w => M ⊨[w .: ρ] phi -> M ⊨[ρ] (∀ phi))) as [F PF].
+        - intro φ; destruct (drinker_paradox ρ φ) as [H|[m Hm]]; [now exists (ρ 0)| now exists m].
+        - exists (fun n: nat => F (phi_ n)).
+          intro φ; specialize (PF φ).
+          now exists (nth_ φ); rewrite (Hphi φ).
+    Qed.
 
     Definition path root:
         exists F, F O = root /\ forall n, wit_rel_comp (F n) (F (S n)).
     Proof.
-    
-    Admitted.
+        unshelve eapply (DC  _ root).
+        intro ρ; destruct (AC_app ρ) as [W P].
+        unfold wit_rel_comp.
+        exists (fun n => match Even_Odd_dec n with 
+                | inl L => ρ (projT1 L)
+                | inr R => W (projT1 R)
+                end ); split.
+        - intros phi; destruct (P phi) as [w Pw].
+          exists (2 * w + 1). 
+          assert (Odd (2 * w + 1)) by (exists w; lia).
+          destruct (Even_Odd_dec (2 * w + 1)) eqn: E.
+          now exfalso; apply (@not_Even_Odd_both (2*w + 1)).
+          intro; apply Pw.
+          specialize (projT2 o) as H'; cbn in H'.
+          enough (pi1 o = w) as <- by easy.
+          now enough ( (w + (w + 0)) + 1 = (pi1 o + (pi1 o + 0)) + 1) by lia.
+        - intro x. destruct (Even_Odd_dec (2 * x)) eqn: E.
+          destruct e; cbn; enough (x = x0) as -> by easy; nia.
+          exfalso; eapply (@not_Even_Odd_both (2*x)); split; [now exists x| easy].  
+    Qed.
 
+    End wit_rel_by_DC.
 
-
-    End Fixed_point.
 
 End Construction.
 
-
+Notation DependentChoice := (forall A R, @DC_func A R).
 
 Section Result.
 
-    (* For any model *)
-    Context {Σf : funcs_signature} {Σp : preds_signature} {M: model}.
-
-    (* If such path exists *)
-    Variable root: env M.
-    Hypothesis path:
-        exists F, F O = root /\ forall n, wit_rel_comp (F n) (F (S n)).
-
-    (* Consider a Cantor pairing *)
-    Variable encode: nat -> nat -> nat.
-    Variable π__1: nat -> nat.
-    Variable π__2: nat -> nat.
-    Hypothesis cantor_paring: forall x, encode (π__1 x) (π__2 x) = x.
-    Hypothesis cantor_left: forall x y, π__1 (encode x y) = x.
-    Hypothesis cantor_right: forall x y, (π__2 (encode x y)) = y.
-
-    (* If the signature is countable *)
+    (* For any countable signature Σ *)
+    Context {Σf : funcs_signature} {Σp : preds_signature}.
     Variable phi_ : nat -> form.
-    Hypothesis Hphi : forall phi, exists n, phi_ n = phi.
+    Variable nth_ : form -> nat.
+    Hypothesis Hphi : forall phi,  phi_ (nth_ phi) = phi.
 
-    Theorem LS_downward: exists (N: model), N ⪳ M.
+    (* with law of exclude middle *)
+    Hypothesis EM: forall p, p \/ ~ p.
+
+    (* For any model over Σ, there is an elementary submodel by dependent choice *)
+    Theorem LS_downward (DC: DependentChoice): 
+        forall (M: model) (root: env M), exists (N: model), N ⪳ M.
     Proof.
-        destruct path as [F Pp'].
-        specialize (depandent_path_comp Pp') as Incl. 
-        specialize (Fixed_point  Pp'  cantor_left cantor_right) as N.
-        unshelve eapply Tarski_Vaught_Test'.
-        exact (fixed F π__1 π__2).
-        all: try easy.
-        now destruct N.
+        intros.
+        destruct (path Hphi DC EM) with (root := root) as [F PF].
+        pose (depandent_path_comp PF) as Incl;
+        pose (Fixed_point PF) as Fixed_point.
+        apply Tarski_Vaught_Test' with (phi_ := phi_) (h := fixed F).
+        { now intro phi; exists (nth_ phi); rewrite Hphi. }
+        now destruct Fixed_point.
     Qed.
 
 End Result.

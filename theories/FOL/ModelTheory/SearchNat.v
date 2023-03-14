@@ -1,5 +1,7 @@
 From Coq Require Export Arith Lia.
 Require Import PeanoNat.
+From Coq Require Import Arith Init.Datatypes.
+Import Nat.
 
 Definition dec (X: Type) : Type := X + (X -> False).
 Definition logical_dec (X: Prop): Prop := X \/ (X -> False).
@@ -303,52 +305,102 @@ End DC_pred_least_over_nat.
 
 Section StrongInduction.
 
-  Variable P: nat -> Type.
-
-  (** The stronger inductive hypothesis given in strong induction. The standard
-  [nat ] induction principle provides only n = pred m, with [P 0] required
-  separately. *)
-  Hypothesis IH : forall m, (forall n, n < m -> P n) -> P m.
-
-  Lemma P0 : P 0.
-  Proof.
-    apply IH; intros.
-    exfalso; inversion H.
-  Qed.
-
-  Hint Resolve P0.
-
-  Lemma pred_increasing : forall n m,
-      n <= m ->
-      Nat.pred n <= Nat.pred m.
-  Proof.
-    induction n; cbn; intros.
-    apply le_0_n.
-    induction H; subst; cbn; eauto.
-    destruct m; eauto.
-  Qed.
-
-  Hint Resolve le_S_n.
-
-  (** * Strengthen the induction hypothesis. *)
-
-  Local Lemma strong_induction_all : forall n,
-      (forall m, m <= n -> P m).
-  Proof.
-    induction n; intros.
-    assert (m = 0) as -> by lia; easy.
-    apply IH.
-    intros.
-    apply IHn.
-    lia.
-  Qed.
-
-  Theorem strong_induction : forall n, P n.
-  Proof.
-    eauto using strong_induction_all.
-  Qed.
+    Definition strong_induction (p: nat -> Type) :
+    (forall x, (forall y, y < x -> p y) -> p x) -> forall x, p x.
+    Proof.
+        intros H x; apply H.
+        induction x; [intros; lia| ].
+        intros; apply H; intros; apply IHx; lia.
+    Defined.
 
 End StrongInduction.
 
 Tactic Notation "strong" "induction" ident(n) := induction n using strong_induction.
 
+
+Section Cantor.
+
+    Definition next a : nat * nat :=
+        match a with
+        | (0,y) => (S y, 0)
+        | (S x, y) => (x, S y)
+        end.
+
+    Fixpoint decode n : nat * nat :=
+        match n with
+        | 0 => (0,0)
+        | S n' => next (decode n')
+        end.
+
+    Fixpoint sum n : nat :=
+        match n with
+        | 0 => 0
+        | S n' => S n' + sum n'
+        end.
+
+    Definition encode_p '(x, y) : nat :=
+        sum (x + y) + y.
+
+    Fact encode_next a :
+        encode_p (next a) = S (encode_p a).
+    Proof.
+        destruct a as [[|x] y]; cbn -[sum].
+        - rewrite !add_0_r. rewrite add_comm. reflexivity.
+        - rewrite !add_succ_r. reflexivity.
+    Qed.
+
+    Opaque encode_p. 
+
+    Fact encode_decode n :
+        encode_p (decode n) = n.
+    Proof.
+    induction n as [|n IH]; cbn.
+    - reflexivity.
+    - rewrite encode_next, IH. reflexivity.
+    Qed.
+
+    Fact decode_encode a :
+        decode (encode_p a) = a.
+    Proof.
+    revert a.
+    enough (forall n a, encode_p a = n -> decode n = a) by eauto.
+    induction n as [|n IH]; intros [x y]; cbn.
+    - destruct x, y; cbn [encode_p]; cbn; easy.
+    - destruct y.
+        + destruct x.
+        * discriminate.
+        * change (S x, 0) with (next (0,x)).
+            rewrite encode_next.
+            intros [= <-].
+            f_equal. apply IH. reflexivity.
+        + change (x, S y) with (next (S x, y)). 
+        rewrite encode_next.
+        intros [= <-].
+        f_equal. apply IH. reflexivity.
+    Qed.
+
+
+    Definition encode a b := encode_p (a, b).
+    Definition π__1 x := fst (decode x).
+    Definition π__2 x := snd (decode x).
+
+    Lemma cantor_paring: forall x, encode (π__1 x) (π__2 x) = x.
+    Proof.
+        intro x; unfold encode, π__1, π__2.
+        rewrite <- (surjective_pairing (decode x)).
+        now rewrite encode_decode.
+    Qed.
+
+    Lemma cantor_left: forall x y, π__1 (encode x y) = x.
+    Proof.
+        intros x y; unfold encode, π__1.
+        now rewrite decode_encode.
+    Qed.
+
+    Definition cantor_right: forall x y, (π__2 (encode x y)) = y.
+    Proof.
+        intros x y; unfold encode, π__2.
+        now rewrite decode_encode.
+    Qed.
+
+End Cantor.
