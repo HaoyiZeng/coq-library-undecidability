@@ -339,22 +339,16 @@ numbers where the inductive hypothesis includes all smaller natural numbers. *)
         now rewrite (Hphi x) in Pf.
     Qed.
 
-    Hypothesis EM: forall p, p \/ ~ p.
-
-    Lemma drinker_paradox ρ φ:
-        M ⊨[ρ] (∀ φ) \/ exists m, (~ M ⊨[m .: ρ] φ).
-    Proof.
-        destruct (EM (exists m, (~ M ⊨[m .: ρ] φ))); [now right| left; intro m].
-        destruct (EM (M ⊨[ m .: ρ] φ)); [easy| exfalso].
-        now apply H; exists m.
-    Qed.
+    Hypothesis drinker_paradox:
+        forall {X} (P: X -> Prop),  inhabited X -> exists x, P x -> forall k, P k.
 
     Definition AC_app: 
         forall ρ, exists (W: nat -> M), forall φ, exists w, M ⊨[W w.:ρ] φ -> M ⊨[ρ] ∀ φ.
     Proof.
         intros.
         destruct (@AC_form M (fun phi w => M ⊨[w .: ρ] phi -> M ⊨[ρ] (∀ phi))) as [F PF].
-        - intro φ; destruct (drinker_paradox ρ φ) as [H|[m Hm]]; [now exists (ρ 0)| now exists m].
+        - intro φ; destruct (drinker_paradox (fun w => (M ⊨[w.:ρ] φ ))) as [w Hw].
+          constructor; exact (ρ O). exists w; intro Hx; cbn; now apply Hw.
         - exists (fun n: nat => F (phi_ n)).
           intro φ; specialize (PF φ).
           now exists (nth_ φ); rewrite (Hphi φ).
@@ -389,7 +383,6 @@ numbers where the inductive hypothesis includes all smaller natural numbers. *)
 
 End Construction.
 
-Notation DependentChoice := (forall A R, @DC_func A R).
 
 Section Result.
 
@@ -399,15 +392,21 @@ Section Result.
     Variable nth_ : form -> nat.
     Hypothesis Hphi : forall phi,  phi_ (nth_ phi) = phi.
 
-    (* with law of exclude middle *)
-    Hypothesis EM: forall p, p \/ ~ p.
+    (* with drinker paradox *)
+    Hypothesis DP:
+        forall {X} (P: X -> Prop), inhabited X -> exists x, P x -> forall k, P k.
 
-    (* For any model over Σ, there is an elementary submodel by dependent choice *)
-    Theorem LS_downward (DC: DependentChoice): 
+    (* and the axiom of Denpendent choice *)
+    Hypothesis DC:
+        forall {X} (R : X -> X -> Prop), (total_rel R) 
+            -> forall w, exists f : nat -> X, f O = w /\ forall n, R (f n) (f (S n)).
+
+    (* For any model over Σ, there is an elementary submodel *)
+    Theorem LS_downward: 
         forall (M: model) (root: env M), exists (N: model), N ⪳ M.
     Proof.
         intros.
-        destruct (path Hphi DC EM) with (root := root) as [F PF].
+        destruct (path Hphi (@DC) (@DP)) with (root := root) as [F PF].
         pose (depandent_path_comp PF) as Incl;
         pose (Fixed_point PF) as Fixed_point.
         apply Tarski_Vaught_Test' with (phi_ := phi_) (h := fixed F).
