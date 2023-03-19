@@ -1,6 +1,7 @@
 From Coq Require Export Arith Lia.
 Require Import PeanoNat.
 From Coq Require Import Arith Init.Datatypes.
+Require Import Undecidability.FOL.ModelTheory.Core.
 Import Nat.
 
 Definition dec (X: Type) : Type := X + (X -> False).
@@ -10,11 +11,60 @@ Notation logical_decidable p := (forall x, logical_dec (p x)).
 Definition eqdec X := forall x y: X, dec (x = y).
 Notation decider p := (forall x, dec (p x)).
 
+Notation "'Σ' x .. y , p" :=
+    (sigT (fun x => .. (sigT (fun y => p)) ..))
+        (at level 200, x binder, right associativity,
+        format "'[' 'Σ'  '/  ' x  ..  y ,  '/  ' p ']'")
+    : type_scope.
+
 
 Notation unique p := (forall x y, p x -> p y -> x = y).
 Notation sig := sigT.
 Notation Sig := existT.
 Notation pi1 := projT1.
+
+Section ChoiceFacts.
+
+    Goal ODC -> SDP_ω.
+    Proof.
+        intros ODC A P [].
+        unshelve destruct (@ODC A (fun _ => P) X) as [f [_ Hf]].
+        exists f.
+        intro H'. intro n'. 
+        now specialize (Hf n' H').
+    Qed.
+
+    Goal ODC -> DC.
+        intros ODC A R tot w. 
+        destruct (@ODC A R w) as [f [H0 Hn]].
+        exists f.
+        split; [easy|].
+        intro n; apply Hn.
+        apply tot.
+    Qed.
+
+     Goal DC -> SDP_ω -> ODC.
+     Proof.
+        intros AC_fun Drinker A R  w.
+        destruct (AC_fun A  (fun x y => (exists y, R x y) -> R x y)) with (w := w) as (f,Hf).
+        - intro x; destruct (Drinker A (R x) ). eauto. exists (x0 1).
+        intro H'. now apply H.  
+        - exists f; assumption.
+    Qed.
+
+    Goal SDP_ω -> NDP_ω.
+    Proof.
+        intros SDPo A R IA.
+        destruct (SDPo A R IA) as [f Hf].
+        exists f. 
+        intros H' k Rk.
+        eapply (H' 1).
+        apply Hf.
+        now exists k.
+    Qed.
+
+End ChoiceFacts.
+
 
 Section Least_witness.
 
@@ -103,7 +153,7 @@ Section Least_witness.
         (forall n, P n \/ ~ P n) -> ex P -> ex (least P).
     Proof.
         intros H [y Py].
-        destruct (Logical_dec_safe _ H y) as [H'|H'].
+        destruct (@Logical_dec_safe _ H y) as [H'|H'].
         - easy.
         - exists y. split; easy.
     Qed.
@@ -162,18 +212,6 @@ Section WO.
 
 End WO.
 
-Definition DC_func {A} {R: A -> A -> Prop} :=
-    (forall x, exists y, R x y) -> forall w,
-         (exists f : nat -> A, f 0 = w /\ forall n, R (f n) (f (S n))).
-
-Definition function_rel {X Y} (P: X -> Y -> Prop) :=
-    forall x, exists! y, P x y.
-
-Definition DC_pred {A} {R: A -> A -> Prop}  := 
-    (forall x, exists y, R x y) -> forall w,
-        exists P: nat -> A -> Prop, function_rel P /\ P 0 w /\ forall n, exists x y,  P n x /\ P (S n) y /\ R x y.        
-
-
 Section DC_search_over_nat.
 
     Variable B: Type.
@@ -183,7 +221,7 @@ Section DC_search_over_nat.
 
     Lemma exists_next:
     (forall x, exists y, R x y) ->
-        exists f: nat -> B, forall b, exists n, R b (f n).
+        Σ f: nat -> B, forall b, exists n, R b (f n).
     Proof.
         intro total; exists f; intro b.
         destruct (total b) as [c Rbc], (sur c) as [m p].
@@ -191,7 +229,7 @@ Section DC_search_over_nat.
     Qed.
 
     Lemma DC_ω:
-        (forall x y, dec (R x y)) -> @DC_func B R.
+        (forall x y, dec (R x y)) -> (@DC_on B R).
     Proof.
         intros dec__R total root.
         destruct (exists_next total) as [h P].
@@ -233,7 +271,7 @@ Section DC_pred_least_over_nat.
 
     Lemma functional_least_pred root:
         (forall x, exists y, R x y) ->
-            function_rel (least_pred root).
+            function_rel' (least_pred root).
     Proof.
         intros total__R n; induction n.
         - exists root; constructor; cbn; try easy.
@@ -290,7 +328,7 @@ Section DC_pred_least_over_nat.
         easy.
     Qed.
 
-Theorem DC_pred_ω: @DC_pred B R.
+Theorem DC_pred_ω: @PDC_on B R.
 Proof.
     intros total w.
     exists(least_pred w); split.
@@ -298,10 +336,7 @@ Proof.
     - split; exact(root_least_pred w) + exact(successor_least_pred w total).
 Qed.
 
-
 End DC_pred_least_over_nat.
-
-
 
 Section StrongInduction.
 
@@ -316,7 +351,6 @@ Section StrongInduction.
 End StrongInduction.
 
 Tactic Notation "strong" "induction" ident(n) := induction n using strong_induction.
-
 
 Section Cantor.
 
@@ -379,7 +413,6 @@ Section Cantor.
         f_equal. apply IH. reflexivity.
     Qed.
 
-
     Definition encode a b := encode_p (a, b).
     Definition π__1 x := fst (decode x).
     Definition π__2 x := snd (decode x).
@@ -404,3 +437,4 @@ Section Cantor.
     Qed.
 
 End Cantor.
+

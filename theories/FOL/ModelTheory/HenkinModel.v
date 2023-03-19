@@ -21,13 +21,6 @@ Section TermIsCountable.
     Variable list_Funcs : nat -> list syms.
     Hypothesis enum_Funcs' : list_enumerator__T list_Funcs syms.
 
-    Definition injects X Y := exists f : X -> Y, forall x x', f x = f x' -> x = x'.
-    Definition infinite X := injects nat X.
-    Definition same_cardinality X Y := injects X Y /\ injects Y X.
-
-    Definition a_coutable_model M :=
-        exists f: nat -> M, surjective f.
-
     Lemma term_model_countable: a_coutable_model term.
     Proof.
         destruct (enumT_term enum_Funcs') as [f H]. 
@@ -223,6 +216,9 @@ Section TermModel.
     Definition full_witness_condition :=
         forall phi, exists w: nat, M ⊨[h w.:h] phi -> M ⊨[h] ∀ phi.
 
+    Definition full_witness_condition_ω :=
+        forall phi, (forall n, M ⊨[h n .: h] phi) -> M ⊨[h] ∀ phi. 
+
     Theorem Tarski_Vaught_Test: 
         full_witness_condition -> exists (N: model), a_coutable_model N /\ N ⪳ M.
     Proof.
@@ -249,6 +245,39 @@ Section TermModel.
             now induction x.
     Qed.
 
+    Theorem Tarski_Vaught_Test_ω: 
+        full_witness_condition_ω -> exists (N: model), a_coutable_model N /\ N ⪳ M.
+    Proof.
+        intro fix_h. exists N. split. {apply term_model_countable. }
+        exists morphism. intros φ. induction φ using form_ind_subst; intro; try easy.
+        - cbn; now rewrite map_map, map_eval_eval.
+        - destruct b0; cbn; intuition.
+        - destruct q; split.
+            + intros H'; destruct (Hphi (φ[up ρ])) as [i phi].
+            specialize (@fix_h (φ[up ρ])) as h_prop.
+            unfold morphism; rewrite <- sat_comp.
+            apply h_prop.
+            intro wit.
+            cbn in H'; specialize (H' ($ wit)).
+            rewrite term_subst_up, H in H'.
+            assert(M ⊨[ $wit.. >> morphism] φ[up ρ] <-> M ⊨[h wit .: (var >> morphism)] φ[up ρ]).
+            apply sat_ext; induction x; cbn; easy.
+            now revert H'; apply sat_ext; induction x.
+            + intros H' d. 
+            rewrite <- subst_var with φ.
+            rewrite (H var (d.:ρ)).
+            specialize (H' (morphism d)).
+            rewrite subst_var.
+            revert H'; apply sat_ext.
+            now induction x.
+    Qed.
+
+    (* Definition wit_env (M:model) (ρ ρ_s: env M) φ := exists w, M ⊨[ρ_s w .: ρ] φ -> M ⊨[ρ] (∀ φ). *)
+
+
+
+    Section help_verion.
+
     Theorem Tarski_Vaught_Test': 
         full_witness_condition -> exists (N: model), N ⪳ M.
     Proof.
@@ -274,6 +303,71 @@ Section TermModel.
             revert H'; apply sat_ext.
             now induction x.
     Qed.
+
+    Theorem Tarski_Vaught_Test_ω': 
+    full_witness_condition_ω -> exists (N: model),  N ⪳ M.
+    Proof.
+        intro fix_h. exists N. 
+        exists morphism. intros φ. induction φ using form_ind_subst; intro; try easy.
+        - cbn; now rewrite map_map, map_eval_eval.
+        - destruct b0; cbn; intuition.
+        - destruct q; split.
+            + intros H'; destruct (Hphi (φ[up ρ])) as [i phi].
+            specialize (@fix_h (φ[up ρ])) as h_prop.
+            unfold morphism; rewrite <- sat_comp.
+            apply h_prop.
+            intro wit.
+            cbn in H'; specialize (H' ($ wit)).
+            rewrite term_subst_up, H in H'.
+            assert(M ⊨[ $wit.. >> morphism] φ[up ρ] <-> M ⊨[h wit .: (var >> morphism)] φ[up ρ]).
+            apply sat_ext; induction x; cbn; easy.
+            now revert H'; apply sat_ext; induction x.
+            + intros H' d. 
+            rewrite <- subst_var with φ.
+            rewrite (H var (d.:ρ)).
+            specialize (H' (morphism d)).
+            rewrite subst_var.
+            revert H'; apply sat_ext.
+            now induction x.
+    Qed.
+
+    Variable root: env M.
+    Hypothesis root_in_h:
+        forall x, exists y, root x = h y.
+
+    Theorem Tarski_Vaught_Test_with_root: 
+        full_witness_condition -> exists (N: model) (mor: N -> M), N ⪳[mor] M /\ forall i, exists n, root i = mor n.
+    Proof.
+        intro fix_h. exists N. 
+        exists morphism; split. intros φ. induction φ using form_ind_subst; intro; try easy.
+        - cbn; now rewrite map_map, map_eval_eval.
+        - destruct b0; cbn; intuition.
+        - destruct q; split.
+            + intros H'; destruct (Hphi (φ[up ρ])) as [i phi].
+            destruct (@fix_h (φ[up ρ])) as [wit h_prop].
+            unfold morphism; rewrite <- sat_comp.
+            apply h_prop.
+            cbn in H'; specialize (H' ($ wit)).
+            rewrite term_subst_up, H in H'.
+            assert(M ⊨[ $wit.. >> morphism] φ[up ρ] <-> M ⊨[h wit .: (var >> morphism)] φ[up ρ]).
+            apply sat_ext; induction x; cbn; easy.
+            now revert H'; apply sat_ext; induction x.
+            + intros H' d. 
+            rewrite <- subst_var with φ.
+            rewrite (H var (d.:ρ)).
+            specialize (H' (morphism d)).
+            rewrite subst_var.
+            revert H'; apply sat_ext.
+            now induction x.
+        - intro i; unfold morphism.
+          destruct (root_in_h i) as [w Hw].
+          now exists ($ w); cbn. 
+    Qed.
+    
+        
+    End help_verion.
+    
+
 
 
     End TarskiVaughtTest.

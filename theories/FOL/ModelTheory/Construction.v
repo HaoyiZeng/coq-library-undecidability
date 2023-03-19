@@ -10,19 +10,23 @@ Notation "'Σ' x .. y , p" :=
         format "'[' 'Σ'  '/  ' x  ..  y ,  '/  ' p ']'")
     : type_scope.
 
-Section Construction.
+Section incl_def.
 
-    Context {Σf : funcs_signature} {Σp : preds_signature} {M: model}. 
+    Variables A B C: Type.
 
-    Section incl_def.
+    Definition im_incl (ρ: A -> C) (ρ': B -> C) := forall x, Σ y, ρ x = ρ' y.
+    Definition im_incl_k (ρ: nat -> C) (ρ': B -> C)  k := forall x, x < k -> Σ y, ρ x = ρ' y.
+    Definition im_sub (ρ: A -> C) (ρ': B -> C)  := forall x, exists y, ρ x = ρ' y.
 
-    Definition im_incl (ρ ρ': nat -> M) := forall x, Σ y, ρ x = ρ' y.
-    Definition im_incl_k (ρ ρ': nat -> M) k := forall x, x < k -> Σ y, ρ x = ρ' y.
-
-    End incl_def.
+End incl_def.
 
     Notation "ρ ≼ ρ'" := (im_incl ρ ρ') (at level 25).
     Notation "ρ ≼[ k ] ρ'" := (im_incl_k ρ ρ' k) (at level 25).
+    Notation "ρ ⊆ ρ'" := (im_sub ρ ρ') (at level 25).
+
+Section Construction.
+
+    Context {Σf : funcs_signature} {Σp : preds_signature} {M: model}. 
 
     Section incl_prop.
 
@@ -42,7 +46,7 @@ Section Construction.
     Proof.
         intros.
         exists (fun x => match (lt_dec x k) with
-                | left cp =>  $ (projT1 (H0 x cp)) 
+                | left cp =>  $ (projT1 (X x cp)) 
                 | right _ =>  $ x 
                 end).
         rewrite sat_comp.
@@ -50,11 +54,11 @@ Section Construction.
         apply bound_ext with k. exact H.
         intros; cbn.
         destruct (lt_dec n k); cbn.
-        now destruct (H0 n l).
+        now destruct (X n l).
         congruence.
         intros x l; cbn.
         destruct (lt_dec x k); cbn.
-        now destruct (H0 x l0).
+        now destruct (X x l0).
         congruence.
     Qed.
 
@@ -80,12 +84,14 @@ Section Construction.
 
     Definition wit_env (ρ ρ_s: env M) φ := exists w, M ⊨[ρ_s w .: ρ] φ -> M ⊨[ρ] (∀ φ).
 
+    Definition wit_env_ω (ρ ρ_s: env M) φ := (forall n: nat, M ⊨[ρ_s n .: ρ] φ) -> M ⊨[ρ] (∀ φ).
+
     Lemma incl_impl_wit_env ρ ρ' ρ_s: ρ ≼ ρ' 
         -> (forall φ, wit_env ρ' ρ_s φ) -> (forall φ, wit_env ρ ρ_s φ).
     Proof.
         intros.
-        destruct (sat_incl H (∀ φ)) as (σ & fH & EH).
-        destruct (H0 (φ[up σ])) as [ws P].
+        destruct (sat_incl X (∀ φ)) as (σ & fH & EH).
+        destruct (H (φ[up σ])) as [ws P].
         exists ws.
         intro Hp; rewrite fH. 
         apply P; revert Hp.
@@ -116,6 +122,28 @@ Section Construction.
         - lia.
     Qed.  
 
+    Lemma bounded_incl_impl_wit_env_ω ρ ρ' ρ_s: (forall φ, wit_env_ω ρ' ρ_s φ) 
+    -> (forall φ k, bounded k φ -> ρ ≼[k] ρ' -> wit_env_ω ρ ρ_s φ).
+    Proof.
+        intros Rρ' φ k H Ink.
+        assert (bounded k (∀ φ)) as HS.
+        apply bounded_S_quant.
+        apply (bounded_up H); lia.
+        destruct (bounded_incl HS Ink ) as (σ & fH & EH).
+        specialize (Rρ' (φ[up σ])) as P.
+        intro Hp; rewrite fH. 
+        apply P; revert Hp.
+        intros H' n'.
+        rewrite sat_comp.
+        unshelve eapply (bound_ext _ H). exact (ρ_s n' .: ρ). 
+        intros n Ln. 
+        destruct n; cbn. {easy. }
+        rewrite <- EH.
+        - now rewrite (cons_w ρ ρ' σ (ρ_s n')).
+        - lia.
+        - apply H'.
+    Qed.  
+
     End incl_prop.
 
     Section incl_Path.
@@ -124,13 +152,13 @@ Section Construction.
 
     Hypothesis prop_F: forall n, (F n) ≼ (F (S n)).
 
-    Lemma refl_incl: forall e, e ≼ e.
+    Lemma refl_incl (e: env M): e ≼ e.
     Proof.
-        intros n x.
+        intros x.
         now exists x.
     Qed.
 
-    Lemma trans_incl: forall a b c, a ≼ b -> b ≼ c -> a ≼ c.
+    Lemma trans_incl (a b c: env M): a ≼ b -> b ≼ c -> a ≼ c.
     Proof.
         unfold "≼"; intros.
         destruct (H x) as [ny H'], (H0 ny) as [my H''].
@@ -172,7 +200,7 @@ Section Construction.
     Variable F: nat -> nat -> M.
 
     Definition wit_rel ρ ρ' :=
-        (forall φ, wit_env ρ ρ' φ) /\ forall x, exists y, ρ x = ρ' y.
+        (forall φ, wit_env ρ ρ' φ) /\  ρ ⊆ ρ'.
 
     Definition wit_rel_comp ρ ρ' :=
         (forall φ, wit_env ρ ρ' φ) /\ forall x, ρ x = ρ' (2 * x).
@@ -219,14 +247,10 @@ Section Construction.
           exists ws.
           intro; apply H'.
           now rewrite Pws.
-        - exists (encode n x); cbn.
+        - intro x; exists (encode n x); cbn.
           unfold fixed.
           now rewrite cantor_left, cantor_right.
     Qed.
-
-    (** Here we prove the principle of strong induction, induction on the natural
-numbers where the inductive hypothesis includes all smaller natural numbers. *)
-
 
     Lemma bounded_cantor b:
         Σ E, forall x, x < b -> π__1 x < E.
@@ -243,11 +267,10 @@ numbers where the inductive hypothesis includes all smaller natural numbers. *)
 
 
     Lemma bounded_rel b: 
-        Σ E: nat, forall x, x < b -> Σ y, fixed x = F E y.
+        Σ E: nat, fixed ≼[b] (F E).
     Proof.
-        intros.
         destruct (bounded_cantor b) as [E PE].
-        exists E; intros.
+        exists E; intros x H.
         unfold fixed.
         specialize (PE _ H).
         specialize (mono_F depandent_path_comp PE) as H1.
@@ -266,10 +289,97 @@ numbers where the inductive hypothesis includes all smaller natural numbers. *)
           unshelve eapply bounded_incl_impl_wit_env; [exact (F E) |exact b | |easy |..].
           + now destruct (union_fixed E) as [HB _].
           + intros x Lxb; apply (P x Lxb). 
-        - now exists x.
+        - intro x; now exists x.
     Qed.
 
     End Fixed_point.
+
+    Section Fixed_point_ω.
+
+    Variable F: nat -> nat -> M.
+
+    Definition wit_rel_ω ρ ρ' :=
+        (forall φ, wit_env_ω ρ ρ' φ) /\ ρ ⊆ ρ'.
+
+    Definition wit_rel_comp_ω ρ ρ' :=
+        (forall φ, wit_env_ω ρ ρ' φ) /\ forall x, ρ x = ρ' (2 * x).
+
+    Variable init_ρ: nat -> M.
+
+    Hypothesis depandent_path_ω:
+        F 0 = init_ρ /\ forall n, wit_rel_comp_ω (F n) (F (S n)).
+
+    Lemma wit_rel_comp_implies_incl_ω ρ ρ':
+        wit_rel_comp_ω ρ ρ' -> ρ ≼ ρ'.
+    Proof.
+        intros H x; exists (2 * x).
+        now destruct H as [_ P].
+    Qed.
+
+    Lemma depandent_path_comp_ω:
+        forall n, F n ≼ F (S n) .
+    Proof.
+        destruct depandent_path_ω as [_ H].
+        now intro n; eapply wit_rel_comp_implies_incl_ω.
+    Qed.
+
+    Opaque encode_p. 
+
+    Definition fixed_ω x := F (π__1 x) (π__2 x).
+
+    Lemma union_incl_ω n: (F n) ≼ fixed_ω.
+    Proof.
+        intro x; exists (encode n x); cbn.
+        unfold fixed_ω.
+        now rewrite cantor_left, cantor_right.
+    Qed.
+
+    Lemma union_fixed_ω n: wit_rel_ω (F n) fixed_ω.
+    Proof.
+        split; intros.
+        - unfold wit_env. 
+          destruct depandent_path_ω as [_ H].
+          destruct (H n) as [H_ H_'].
+          specialize (H_ φ) as H'. 
+          (* destruct (H'' w) as [w' Pw]. *)
+          specialize (union_incl_ω (S n)) as  Pws.
+          unfold wit_env_ω.
+          intros Ha n'. apply H'.
+          unfold "≼" in Pws.
+          intro w.
+          destruct (Pws w) as [w' ->].
+          now specialize (Ha w').
+        - intro x; exists (encode n x); cbn.
+          unfold fixed_ω.
+          now rewrite cantor_left, cantor_right.
+    Qed.
+
+    Lemma bounded_rel_ω b: 
+        Σ E: nat, fixed_ω ≼[b] (F E).
+    Proof.
+        destruct (bounded_cantor b) as [E PE].
+        exists E; intros x H.
+        unfold fixed.
+        specialize (PE _ H).
+        specialize (mono_F depandent_path_comp_ω PE) as H1.
+        exists (projT1 (H1 (π__2 x))).
+        now destruct (projT2 (H1 (π__2 x))).
+    Qed.
+
+    Theorem Fixed_point_ω:
+        wit_rel_ω fixed_ω fixed_ω.
+    Proof.
+        split; intros.
+        - destruct (find_bounded φ) as [b bφ].
+          destruct (bounded_rel_ω b) as [E P].
+          (* enough (exists E: nat, forall x, x < b -> exists y, fixed x = F E y) as [E P]. *)
+          unshelve eapply bounded_incl_impl_wit_env_ω; [exact (F E) |exact b | |easy |..].
+          + now destruct (union_fixed_ω E) as [HB _].
+          + intros x Lxb; apply (P x Lxb). 
+        - intro x; now exists x.
+    Qed.
+
+    End Fixed_point_ω.
 
     Section wit_rel_by_DC.
 
@@ -293,19 +403,9 @@ numbers where the inductive hypothesis includes all smaller natural numbers. *)
     Variable nth_ : form -> nat.
     Hypothesis Hphi : forall phi,  phi_ (nth_ phi) = phi.
 
-    Definition FunctionalCountableChoice_on {A} :=
-    forall (R:nat-> A->Prop),
-        (forall n, exists y, R n y) ->
-        (exists f : nat -> A, forall n, R n (f n)).
+    Hypothesis DC: DC.
 
-    Hypothesis DC: forall {A} R, total_rel R 
-        -> forall w, exists F: nat -> A, F 0 = w /\ forall n, R (F n) (F (S n)).
-
-    Notation FunctionalCountableChoice :=
-        (forall A : Type, @FunctionalCountableChoice_on A).
-
-    Theorem functional_countable_choice:
-        FunctionalCountableChoice.
+    Theorem AC_ω: AC_ω.
      Proof.
        intros A R H0.
        set (R' (p q:nat*A) := fst q = S (fst p) /\ R (fst p) (snd q)).
@@ -325,29 +425,51 @@ numbers where the inductive hypothesis includes all smaller natural numbers. *)
            assumption.
      Qed.
 
-    Definition AC_form: forall {B} (R: form -> B -> Prop), total_rel R 
-        -> exists F: form -> B, forall x, R x (F x).
+    Definition AC_form: AC_form.
     Proof.
-        intros.
+        intros A R total_R.
         set (R' n := R (phi_ n)).
-        assert (total_rel R') as H'. intro x.
-        now destruct (H (phi_ x)) as [b Pb]; exists b.
-        destruct (functional_countable_choice H') as [f Pf].
+        assert (total_rel R') as total_R'. intro x. 
+        now destruct (total_R (phi_ x)) as [b Pb]; exists b.
+        destruct (AC_ω total_R') as [f Pf].
         exists (fun fm => f (nth_ fm)).
         intro x; specialize (Pf (nth_ x)).
         unfold R' in Pf.
         now rewrite (Hphi x) in Pf.
     Qed.
 
-    Hypothesis drinker_paradox:
-        forall {X} (P: X -> Prop),  inhabited X -> exists x, P x -> forall k, P k.
+    Hypothesis DP: DP.
+    Hypothesis DP_ω: DP_ω.
+
+    Lemma iterater_snd P: (forall n, P (π__2 n)) -> (forall n, P n).
+    Proof.
+        intros.
+        specialize (X (encode 0 n)).
+        now rewrite cantor_right in X.
+    Qed.
+    
+    Definition AC_app_ω: 
+        forall ρ, exists (W: nat -> M), forall φ, (forall w, M ⊨[W w.:ρ] φ) -> M ⊨[ρ] ∀ φ.
+    Proof.
+        intros.
+        destruct (@AC_form (nat -> M) (fun phi h => (forall w, M ⊨[(h w) .: ρ] phi) -> M ⊨[ρ] (∀ phi))) as [F PF].
+        - intro φ; destruct (DP_ω (fun w => (M ⊨[w.:ρ] φ ))) as [w Hw].
+          constructor; exact (ρ O). exists w; intro Hx; cbn; now apply Hw.
+        - exists (fun n: nat => F (phi_ (π__1 n)) (π__2 n)).
+          intro φ; specialize (PF φ).
+          intro H'. apply PF.
+          intro w.
+          specialize (H' (encode (nth_ φ) w)).
+          rewrite cantor_left, cantor_right in H'.
+          now rewrite (Hphi φ) in H'.
+    Qed.
 
     Definition AC_app: 
         forall ρ, exists (W: nat -> M), forall φ, exists w, M ⊨[W w.:ρ] φ -> M ⊨[ρ] ∀ φ.
     Proof.
         intros.
         destruct (@AC_form M (fun phi w => M ⊨[w .: ρ] phi -> M ⊨[ρ] (∀ phi))) as [F PF].
-        - intro φ; destruct (drinker_paradox (fun w => (M ⊨[w.:ρ] φ ))) as [w Hw].
+        - intro φ; destruct (DP (fun w => (M ⊨[w.:ρ] φ ))) as [w Hw].
           constructor; exact (ρ O). exists w; intro Hx; cbn; now apply Hw.
         - exists (fun n: nat => F (phi_ n)).
           intro φ; specialize (PF φ).
@@ -365,7 +487,7 @@ numbers where the inductive hypothesis includes all smaller natural numbers. *)
                 | inr R => W (projT1 R)
                 end ); split.
         - intros phi; destruct (P phi) as [w Pw].
-          exists (2 * w + 1). 
+          exists (2 * w + 1).
           assert (Odd (2 * w + 1)) by (exists w; lia).
           destruct (Even_Odd_dec (2 * w + 1)) eqn: E.
           now exfalso; apply (@not_Even_Odd_both (2*w + 1)).
@@ -378,35 +500,49 @@ numbers where the inductive hypothesis includes all smaller natural numbers. *)
           exfalso; eapply (@not_Even_Odd_both (2*x)); split; [now exists x| easy].  
     Qed.
 
+    Definition path_ω root:
+        exists F, F O = root /\ forall n, wit_rel_comp_ω (F n) (F (S n)).
+    Proof.
+        unshelve eapply (DC  _ root).
+        intro ρ; destruct (AC_app_ω ρ) as [W P].
+        exists (fun n => match Even_Odd_dec n with 
+                | inl L => ρ (projT1 L)
+                | inr R => W (projT1 R)
+                end ); split.
+        - intros phi; specialize (P phi) as Pw.
+          intros H' w'.
+          apply Pw; intro w.
+          assert (Odd (2 * w + 1)) by (exists w; lia).
+          destruct (Even_Odd_dec (2 * w + 1)) eqn: E.
+          now exfalso; apply (@not_Even_Odd_both (2*w + 1)).
+          specialize (H' (2*w + 1)).
+          rewrite E in H'.
+          specialize (projT2 o) as H_; cbn in H_.
+          enough (pi1 o = w) as <- by easy.
+          now enough ( (w + (w + 0)) + 1 = (pi1 o + (pi1 o + 0)) + 1) by lia.
+        - intro x. destruct (Even_Odd_dec (2 * x)) eqn: E.
+          destruct e; cbn; enough (x = x0) as -> by easy; nia.
+          exfalso; eapply (@not_Even_Odd_both (2*x)); split; [now exists x| easy].  
+    Qed.
+
     End wit_rel_by_DC.
 
-
 End Construction.
-
 
 Section Result.
 
     (* For any countable signature Σ *)
     Context {Σf : funcs_signature} {Σp : preds_signature}.
-    Variable phi_ : nat -> form.
-    Variable nth_ : form -> nat.
-    Hypothesis Hphi : forall phi,  phi_ (nth_ phi) = phi.
-
-    (* with drinker paradox *)
-    Hypothesis DP:
-        forall {X} (P: X -> Prop), inhabited X -> exists x, P x -> forall k, P k.
-
-    (* and the axiom of Denpendent choice *)
-    Hypothesis DC:
-        forall {X} (R : X -> X -> Prop), (total_rel R) 
-            -> forall w, exists f : nat -> X, f O = w /\ forall n, R (f n) (f (S n)).
+    Variable phi_: nat -> form.
+    Variable nth_: form -> nat.
+    Hypothesis Hphi: forall phi,  phi_ (nth_ phi) = phi.
 
     (* For any model over Σ, there is an elementary submodel *)
     Theorem LS_downward: 
-        forall (M: model) (root: env M), exists (N: model), N ⪳ M.
+        DP -> DC -> forall (M: model) (root: env M), exists (N: model), N ⪳ M.
     Proof.
-        intros.
-        destruct (path Hphi (@DC) (@DP)) with (root := root) as [F PF].
+        intros DP DC M root.
+        destruct (path Hphi DC DP) with (root := root) as [F PF].
         pose (depandent_path_comp PF) as Incl;
         pose (Fixed_point PF) as Fixed_point.
         apply Tarski_Vaught_Test' with (phi_ := phi_) (h := fixed F).
@@ -414,5 +550,37 @@ Section Result.
         now destruct Fixed_point.
     Qed.
 
+    (* This version show that the elementary submodel include all elements in root *)
+    Theorem LS_downward': 
+        DP -> DC -> forall (M: model) (root: env M), 
+            exists (N: model) (mor: N -> M), N ⪳[mor] M /\ root ⊆ mor.
+    Proof.
+        intros DP DC M root.
+        destruct (path Hphi DC DP) with (root := root) as [F PF].
+        pose (depandent_path_comp PF) as Incl;
+        pose (Fixed_point PF) as Fixed_point.
+        apply Tarski_Vaught_Test_with_root with (phi_ := phi_) (h := fixed F) (root := root).
+        { now intro phi; exists (nth_ phi); rewrite Hphi. }
+        intro x; destruct (union_incl F 0 x) as [y Py].
+        exists y; rewrite <- Py; destruct PF as [A B]; now rewrite A.
+        now destruct Fixed_point.
+    Qed.
+
+    Theorem LS_downward_from_DPω_and_DC: 
+        DP_ω -> DC -> forall (M: model) (root: env M), exists (N: model), N ⪳ M.
+    Proof.
+        intros DP_ω DC M root.
+        destruct (path_ω Hphi DC DP_ω ) with (root := root) as [F PF].
+        pose (depandent_path_comp_ω PF) as Incl;
+        pose (Fixed_point_ω PF) as Fixed_point.
+        apply Tarski_Vaught_Test_ω' with (phi_ := phi_) (h := fixed F).
+        { now intro phi; exists (nth_ phi); rewrite Hphi. }
+        now destruct Fixed_point.
+    Qed.
+
 End Result.
+
+
+
+
 

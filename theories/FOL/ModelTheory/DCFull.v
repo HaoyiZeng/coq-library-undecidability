@@ -47,6 +47,10 @@ Section DC.
     Variable A: Type.
     Variable R: A -> A -> Prop.
 
+    Definition DC:=
+        (forall x, exists y, R x y) -> forall w,
+            (exists f : nat -> A, f 0 = w /\ forall n, R (f n) (f (S n))).
+
     Definition surjective {M N} (f: M -> N) :=
         forall n: N, exists m: M, f m = n.
 
@@ -57,9 +61,6 @@ Section DC.
         forall (Σf : funcs_signature) (Σp : preds_signature) (M: model), forall m,
             exists (N: model), a_coutable_model N /\ (exists h: N -> M, elementary_homomorphism h /\ exists n: N, h n = m).
 
-    Definition FunctionalDependentChoice_on:=
-        (forall x, exists y, R x y) -> forall w,
-            (exists f : nat -> A, f 0 = w /\ forall n, R (f n) (f (S n))).
 
     Instance interp__A : interp A :=
     {
@@ -112,7 +113,7 @@ Section DC.
 
     Hypothesis dec__R: forall x y, dec (R x y).
 
-    Lemma LS_imples_DC: LS_countable -> FunctionalDependentChoice_on.
+    Lemma LS_imples_DC: LS_countable -> DC.
     Proof using dec__R.
         intros LS total a.
         destruct (LS _ _ Model__A a) as [N [[f sur] [h [ele_el__h [n Eqan]]]]].
@@ -127,7 +128,7 @@ Section DC.
         destruct H as [R' [P1 P2]].
         assert (forall x, decidable (fun y => R' x y)) as dec__R'.
         intros x y. destruct (dec__R (h x) (h y)); firstorder.
-        destruct (DC_ω _ _ f sur dec__R' P1 n) as [g [case0 Choice]].
+        destruct (@DC_ω _ _ f sur dec__R' P1 n) as [g [case0 Choice]].
         exists (g >> h); unfold ">>"; split.
         now rewrite case0.
         intro n'; now rewrite <- (P2 (g n') (g (S n'))).
@@ -137,17 +138,68 @@ Section DC.
 
     Section DC_pred_full.
 
-    Hypothesis logical_dec__R: forall x y,  (R x y) \/ ~ (R x y).
+    Hypothesis definiteness__R: forall x y,  (R x y) \/ ~ (R x y).
+
+    Definition PDC:= 
+        (forall x, exists y, R x y) -> forall w,
+            exists P: nat -> A -> Prop, (forall x, exists! y, P x y) /\ P 0 w /\ forall n, exists x y,  P n x /\ P (S n) y /\ R x y. 
 
     Definition bijective_comp {X Y} :=
         exists f g, (forall x: X, g (f x) = x) /\ forall y: Y, f (g y) = y.
 
     Definition LS_countable_comp :=
-    forall (Σf : funcs_signature) (Σp : preds_signature) (M: model), forall m,
-        exists (N: model), @bijective_comp N nat /\ (exists h: N -> M, elementary_homomorphism h /\ exists n: N, h n = m).
+        forall (Σf : funcs_signature) (Σp : preds_signature) (M: model), forall m,
+            exists (N: model), @bijective_comp N nat /\ (exists h: N -> M, elementary_homomorphism h /\ exists n: N, h n = m).
 
-    Lemma LS_imples_DC_pred: LS_countable_comp -> (@DC_pred _ R).
-    Proof using logical_dec__R.
+
+    (* Definition OmniscientDependentChoiceP_on {A} (R: A -> A -> Prop) :=
+        forall w,
+        exists P : nat -> A -> Prop,
+            (forall x, exists y, R x y) -> forall n : nat, function_rel P /\ P 0 w /\ forall n, exists x y,  P n x /\ P (S n) y /\ R x y.   
+
+    Hypothesis IP_pred':
+        forall (A' : Prop) X (P : (nat -> X -> Prop) -> Prop),
+            (A' -> { R | P R }) -> { R | A' -> P R }.
+
+    Lemma LS_imples_DC_pred': LS_countable_comp -> (@OmniscientDependentChoiceP_on _ R).
+    Proof.
+        intros LS m.
+        destruct (LS _ _ Model__A m) as [N [(f & g & bij_l & bij_r) [h [ele_el__h [n Eqan]]]]].
+        destruct(@IP_pred' (forall x, exists y, R x y) A
+        (fun P => forall n : nat, function_rel P /\ P 0 m /\ forall n, exists x y,  P n x /\ P (S n) y /\ R x y)).
+        intro total.
+        specialize (@total_sat ((fun _ => n) >> h) total ) as total'.
+        apply ele_el__h in total'.
+        assert (Σ R', (forall x: N, (exists y: N, R' x y)) /\ (forall α β, R' α β <-> R (h α) (h β))).
+        exists (fun x y => tt ₚ[ N] cons N x 1 (cons N y 0 (nil N))).
+        split. intro x. now specialize(total' x).
+        intros α β; rewrite forfor_sat.
+        now unfold elementary_homomorphism in ele_el__h; rewrite <- ele_el__h.
+        destruct X as [R' [P1 P2]].
+        assert (forall x : N, logical_decidable (R' x)).
+        intros x y. destruct (logical_dec__R (h x) (h y)); now try (left + right; rewrite P2).
+        edestruct (@DC_pred_ω N R' _ _ bij_r bij_l H P1 n) as [P [case0 Choice]].
+        unshelve eexists.
+        exact (fun n' a' => exists n, h n = a' /\ P n' n); cbn.
+        split.
+        (* Proof of functional property*)
+        - intro x; destruct (case0 x) as [n' [P1' P2']].
+            exists (h n'); constructor.
+            now exists n'.    
+            intros a' [nn [Pa' Pa'']]. now rewrite (P2' nn).
+        (* Proof of spec of the dependent choice predicate *)
+        - split.
+            + now exists n.
+            + intro nA.
+            destruct Choice as [_ Choice], (Choice nA) as [x [y Choice']].
+            exists (h x), (h y).
+            split. now exists x.
+            split. now exists y. now rewrite <- P2.
+        - now exists x.
+    Qed. *)
+
+    Lemma LS_imples_DC_pred: LS_countable_comp -> PDC.
+    Proof using definiteness__R.
         intros LS total a.
         destruct (LS _ _ Model__A a) as [N [(f & g & bij_l & bij_r) [h [ele_el__h [n Eqan]]]]].
         specialize (@total_sat ((fun _ => n) >> h) total ) as total'.
@@ -159,7 +211,7 @@ Section DC.
         now unfold elementary_homomorphism in ele_el__h; rewrite <- ele_el__h.
         destruct H as [R' [P1 P2]].
         assert (forall x : N, logical_decidable (R' x)).
-        intros x y. destruct (logical_dec__R (h x) (h y)); now try (left + right; rewrite P2).
+        intros x y. destruct (definiteness__R (h x) (h y)); now try (left + right; rewrite P2).
         edestruct (@DC_pred_ω N R' _ _ bij_r bij_l H P1 n) as [P [case0 Choice]].
         unshelve eexists.
         exact (fun n' a' => exists n, h n = a' /\ P n' n); cbn.
@@ -181,8 +233,8 @@ Section DC.
 
     End DC_pred_full.
 
-
 End DC.
+
 
 
 
