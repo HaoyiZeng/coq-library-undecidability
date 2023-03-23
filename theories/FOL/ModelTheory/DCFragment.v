@@ -170,6 +170,7 @@ Section DC.
 
     End dec_R.
 
+
 End DC.
 
 Section DP.
@@ -213,6 +214,9 @@ Section DP.
         rewrite emb; unfold ">>".
         now destruct (Hterm d) as [x <-].
     Qed.
+
+    Definition OAC_P :=
+        forall X Y (R : X -> Y -> Prop), Y -> exists f, total_rel f /\ (total_rel R -> functional_rel f /\ forall x y, f x y -> R x y).
 
 End DP.
 

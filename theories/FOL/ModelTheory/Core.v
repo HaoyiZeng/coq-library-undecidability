@@ -167,6 +167,10 @@ Section What_is_your_choice.
         inhabited A -> 
             exists f: nat -> A, (forall n, ~ P (f n)) -> forall k, ~ P k.
 
+    Definition SDP_ω_on' A (P: A -> Prop) :=
+        inhabited A -> 
+            exists f: nat -> A, (exists x, P x) -> (exists n, P (f n)).
+
     Definition SDP_ω_on A (P: A -> Prop) :=
         inhabited A -> 
             exists f: nat -> A, (exists x, P x) -> (forall n, P (f (S n))).
@@ -175,9 +179,23 @@ Section What_is_your_choice.
         (forall x, exists y, R x y) ->
             forall w, exists f: nat -> A, f O = w /\ forall n, R (f n) (f (S n)).
 
+    Definition CDC_on A (R: A -> A -> Prop) :=
+        (forall x, exists y, R x y) ->
+            forall w: A, exists f: nat -> nat -> A, 
+                (forall b, f O b = w) /\  forall n m, exists k, R (f n m) (f (S n) k).
+
+    Definition DC_weaker_on A (R: A -> A -> Prop) :=
+        (forall x y, R x y \/ ~(R x y)) -> (forall x, exists y, R x y) ->
+            forall w, exists f: nat -> A, f O = w /\ forall n, R (f n) (f (S n)).
+
+
     Definition ODC_on A (R: A -> A -> Prop) :=
         forall w,
             exists f : nat -> A, f 0 = w /\ forall n, (exists y, R (f n) y) -> R (f n) (f (S n)).
+
+            Definition ODC_on' A (R: A -> A -> Prop) :=
+                forall w,
+                    exists f : nat -> A, f 0 = w /\ forall n, (forall m, R (f n) (f (S m))) -> (forall y, R (f n) y).
 
     Definition function_rel' {X Y} (P: X -> Y -> Prop) :=
         forall x, exists! y, P x y.
@@ -188,6 +206,10 @@ Section What_is_your_choice.
 
     Definition AC_on A B (R: A -> B->Prop) :=
         (forall n, exists y, R n y) -> exists f : A -> B, forall n, R n (f n).
+
+    Definition CAC_on A B (R: A -> B -> Prop) :=
+        (forall x, exists y, R x y) -> exists f: A -> (A -> B), 
+            forall n, exists w, R n (f n w).
 
 End What_is_your_choice.
 
@@ -201,6 +223,9 @@ Notation PDC := (forall A R, @PDC_on A R).
 Notation AC := (forall A B R, @AC_on A B R).
 Notation AC_ω := (forall A R, @AC_on nat A R).
 Notation AC_form := (forall A R, @AC_on form A R).
+Notation CAC_ω := (forall A R, @CAC_on nat A R).
+
+Notation ODC' := (forall A R, @ODC_on' A R).
 
 Section LS_theorem.
 
@@ -224,6 +249,72 @@ Section LS_theorem.
             exists (N: interp term), (exists h: term -> M, (forall phi (ρ: env term), ρ ⊨ phi <-> (ρ >> h) ⊨ phi) /\ exists n: term, h n = m).
 
 End LS_theorem.
+
+Goal ODC' -> DP_ω.
+Proof.
+    intros H A P [].
+    destruct (H A (fun x => P) X).
+    exists x.
+    destruct H0.
+    intro H'.
+    apply (H1 0).
+    intro m.
+    exact (H' (S m)).
+Qed.
+
+
+
+(* A normal version of IP *)
+    Definition IndependenceOfGeneralPremises :=
+        forall (A:Type) (P:A -> Prop) (Q:Prop),
+            inhabited A ->
+                (Q -> exists x, P x) -> exists x, Q -> P x.
+(* If the results can only be narrowed down to a countable set*)
+    Definition CIndependenceOfGeneralPremises :=
+        forall (A:Type) (P:A -> Prop) (Q:Prop),
+            inhabited A ->
+                (Q -> exists x, P x) -> exists (f: nat -> A), Q -> (exists m, P (f m)).
+
+                
+
+(* Then CIndependenceOfGeneralPremises <-> CSDP (Countable version of SDP)
+    Definition SDP_ω_on' A (P: A -> Prop) :=
+        inhabited A -> 
+            exists f: nat -> A, (exists x, P x) -> (exists n, P (f n)).
+*)
+
+
+(* 
+Goal (forall A P, @SDP_ω_on' A P)-> IndependenceOfGeneralPremises.
+Proof.
+    intros.
+    intros A P Q IA HP.
+    destruct (H A P IA).
+    exists x; intros Q'%HP.
+    now apply H0.
+Qed.
+
+Goal IndependenceOfGeneralPremises -> (forall A P, @SDP_ω_on' A P).
+Proof.
+    intros.
+    intros IA.
+    destruct (H A P (exists x, P x) IA).
+    easy.
+    now exists x.
+Qed.
+
+
+Definition CIndependenceOfGeneralPremises :=
+    forall (A:Type) (P:A -> Prop) (Q:Prop),
+      inhabited A ->
+        (exists f, Q -> forall m: nat, P (f m)) -> (forall x, P x -> Q). *)
+    
+
+
+
+
+
+
 
 
 

@@ -272,9 +272,6 @@ Section TermModel.
             now induction x.
     Qed.
 
-    (* Definition wit_env (M:model) (ρ ρ_s: env M) φ := exists w, M ⊨[ρ_s w .: ρ] φ -> M ⊨[ρ] (∀ φ). *)
-
-
 
     Section help_verion.
 
@@ -305,7 +302,7 @@ Section TermModel.
     Qed.
 
     Theorem Tarski_Vaught_Test_ω': 
-    full_witness_condition_ω -> exists (N: model),  N ⪳ M.
+        full_witness_condition_ω -> exists (N: model), N ⪳ M.
     Proof.
         intro fix_h. exists N. 
         exists morphism. intros φ. induction φ using form_ind_subst; intro; try easy.
@@ -363,12 +360,8 @@ Section TermModel.
           destruct (root_in_h i) as [w Hw].
           now exists ($ w); cbn. 
     Qed.
-    
-        
+
     End help_verion.
-    
-
-
 
     End TarskiVaughtTest.
 

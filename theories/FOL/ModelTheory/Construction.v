@@ -85,6 +85,7 @@ Section Construction.
     Definition wit_env (ρ ρ_s: env M) φ := exists w, M ⊨[ρ_s w .: ρ] φ -> M ⊨[ρ] (∀ φ).
 
     Definition wit_env_ω (ρ ρ_s: env M) φ := (forall n: nat, M ⊨[ρ_s n .: ρ] φ) -> M ⊨[ρ] (∀ φ).
+    
 
     Lemma incl_impl_wit_env ρ ρ' ρ_s: ρ ≼ ρ' 
         -> (forall φ, wit_env ρ' ρ_s φ) -> (forall φ, wit_env ρ ρ_s φ).
@@ -381,6 +382,7 @@ Section Construction.
 
     End Fixed_point_ω.
 
+
     Section wit_rel_by_DC.
 
     Definition Even n := Σ m, n = 2 * m.
@@ -476,6 +478,20 @@ Section Construction.
           now exists (nth_ φ); rewrite (Hphi φ).
     Qed.
 
+    Definition CAC_app: 
+        (forall A R, @CAC_on form A R) -> forall ρ, exists (W: nat -> M), forall φ, exists w, M ⊨[W w.:ρ] φ -> M ⊨[ρ] ∀ φ.
+    Proof.
+        intros CAC ρ.
+        destruct (CAC M (fun phi w => M ⊨[w .: ρ] phi -> M ⊨[ρ] (∀ phi))) as [F PF].
+        - intro φ; destruct (DP (fun w => (M ⊨[w.:ρ] φ ))) as [w Hw].
+        constructor; exact (ρ O). exists w; intro Hx; cbn; now apply Hw.
+        - exists (fun n: nat => F (phi_ (π__1 n)) (phi_ (π__2 n))).
+        intro φ; destruct (PF φ) as [w Pw].
+        exists (encode (nth_ φ) (nth_ w)).
+        rewrite cantor_left, cantor_right.
+        now rewrite (Hphi φ), (Hphi w).
+    Qed.
+
     Definition path root:
         exists F, F O = root /\ forall n, wit_rel_comp (F n) (F (S n)).
     Proof.
@@ -523,6 +539,31 @@ Section Construction.
         - intro x. destruct (Even_Odd_dec (2 * x)) eqn: E.
           destruct e; cbn; enough (x = x0) as -> by easy; nia.
           exfalso; eapply (@not_Even_Odd_both (2*x)); split; [now exists x| easy].  
+    Qed.
+
+    Definition CDC_path root:
+    exists F, F O = root /\ forall n, wit_rel_comp_ω (F n) (F (S n)).
+    Proof.
+        unshelve eapply (DC  _ root).
+        intro ρ; destruct (AC_app_ω ρ) as [W P].
+        exists (fun n => match Even_Odd_dec n with 
+                | inl L => ρ (projT1 L)
+                | inr R => W (projT1 R)
+                end ); split.
+        - intros phi; specialize (P phi) as Pw.
+        intros H' w'.
+        apply Pw; intro w.
+        assert (Odd (2 * w + 1)) by (exists w; lia).
+        destruct (Even_Odd_dec (2 * w + 1)) eqn: E.
+        now exfalso; apply (@not_Even_Odd_both (2*w + 1)).
+        specialize (H' (2*w + 1)).
+        rewrite E in H'.
+        specialize (projT2 o) as H_; cbn in H_.
+        enough (pi1 o = w) as <- by easy.
+        now enough ( (w + (w + 0)) + 1 = (pi1 o + (pi1 o + 0)) + 1) by lia.
+        - intro x. destruct (Even_Odd_dec (2 * x)) eqn: E.
+        destruct e; cbn; enough (x = x0) as -> by easy; nia.
+        exfalso; eapply (@not_Even_Odd_both (2*x)); split; [now exists x| easy].  
     Qed.
 
     End wit_rel_by_DC.

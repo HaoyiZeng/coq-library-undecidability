@@ -242,6 +242,29 @@ Section DC_search_over_nat.
 
 End DC_search_over_nat.
 
+Section AC_ω_implies_DC.
+
+    Variable B: Type.
+    Variable R:  B -> B -> Prop.
+    Variable f: nat -> B.
+    Variable g: B -> nat.
+    Hypothesis bi_l: forall n, g (f n) = n.
+    Hypothesis bi_r: forall n, f (g n) = n.
+    Hypothesis AC_ω: AC_ω.
+
+Lemma DC_ω': (@DC_on B R).
+Proof.
+    intros total_B w.
+    destruct (@AC_ω nat (fun n m => R (f n) (f m))) as [h Hh].
+    - intro n. specialize (total_B (f n)) as [fm Pfm].
+      exists (g fm). now rewrite bi_r.
+    - exists (fun n => f (iter n h (g w))); split.
+      + now cbn; rewrite bi_r.
+      + intro n; cbn. apply Hh.
+Qed. 
+
+End AC_ω_implies_DC.
+
 Section DC_pred_least_over_nat.
 
     Variable B: Type.

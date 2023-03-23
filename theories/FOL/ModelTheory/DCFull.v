@@ -233,7 +233,59 @@ Section DC.
 
     End DC_pred_full.
 
+
+
 End DC.
+
+Section LS_imples_AC_κ.
+
+    Variable A: Type.
+    Variable Κ: Type.
+    Variable P: Κ -> A -> Prop.
+
+    Instance sig_κ : preds_signature | 0 :=
+        {| preds := Κ;  ar_preds := fun _ => 1 |}.
+
+    Instance interp_κ : interp A :=
+    {
+        i_func := fun F v => match F return A with end;
+        i_atom := fun n v => P n (hd v)
+    }.
+
+    Variable E_term: Κ -> term. 
+    Variable term_E: term -> Κ. 
+    Hypothesis E_Κ: forall w, E_term (term_E w) = w.
+
+    Definition LS_term :=
+        forall (Σf : funcs_signature) (Σp : preds_signature) (M: Type) (i_M: interp M), forall m,
+            exists (N: interp term), (exists h: term -> M, (forall phi (ρ: env term), ρ ⊨ phi <-> (ρ >> h) ⊨ phi) /\ exists n: term, h n = m).
+
+    Definition CAC_on Κ B (R: Κ -> B -> Prop) :=
+        inhabited B -> (forall n, exists y, R n y) -> exists f : Κ -> (Κ -> B), forall n, exists w, R n (f n w).
+    
+    Theorem LS_implies_CAC_κ:
+        LS_term -> (@CAC_on Κ A P).
+    Proof.
+        intros LS [] total_R.
+        assert (forall n ρ, ρ ⊨ (∃ (atom _ _ _ _ n (cons _ ($0) _ (nil _))))).
+        - cbn; intros; apply total_R.
+        - destruct (LS _ _ A interp_κ X) as [N [h [ele_el__h [n Eqan]]] ].
+          assert ( forall (m: Κ) (ρ : env term), ρ ⊨ (∃ atom m (cons term $0 0 (nil term)))).
+          + intro m; specialize (ele_el__h (∃ atom m (cons term $0 0 (nil term)))).
+            intro rho; rewrite ele_el__h.
+            cbn; apply total_R.
+          + exists (fun _ (n: Κ) => h (E_term n)).
+            intro m; destruct (H0 m var) as [x Hx].
+            exists (term_E x).
+            specialize (ele_el__h (atom m (cons term ($0) 0 (nil term))) (fun _ => x)).
+            cbn in ele_el__h.
+            rewrite E_Κ.
+            unfold ">>" in ele_el__h; rewrite <- ele_el__h.
+            now cbn in Hx.
+    Qed.
+
+End LS_imples_AC_κ.
+
 
 
 
