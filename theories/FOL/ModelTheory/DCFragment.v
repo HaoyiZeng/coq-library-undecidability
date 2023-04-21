@@ -195,7 +195,8 @@ Section DP.
         specialize (Hh ((atom tt) (cons _ ($0) 0 (nil _)))) .
         cbn in Hh.
         destruct Hh as [w Pw].
-        now exists (h w).
+        exists (fun _ => h w).
+        now intro H'; apply Pw, H'.
     Qed.
 
     Variable tnth_: nat -> term. 
@@ -214,9 +215,5 @@ Section DP.
         rewrite emb; unfold ">>".
         now destruct (Hterm d) as [x <-].
     Qed.
-
-    Definition OAC_P :=
-        forall X Y (R : X -> Y -> Prop), Y -> exists f, total_rel f /\ (total_rel R -> functional_rel f /\ forall x y, f x y -> R x y).
-
 End DP.
 

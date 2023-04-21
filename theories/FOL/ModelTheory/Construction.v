@@ -17,12 +17,15 @@ Section incl_def.
     Definition im_incl (ρ: A -> C) (ρ': B -> C) := forall x, Σ y, ρ x = ρ' y.
     Definition im_incl_k (ρ: nat -> C) (ρ': B -> C)  k := forall x, x < k -> Σ y, ρ x = ρ' y.
     Definition im_sub (ρ: A -> C) (ρ': B -> C)  := forall x, exists y, ρ x = ρ' y.
+    Definition im_sub_k (ρ: nat -> C) (ρ': B -> C)  k := forall x, x < k -> exists y, ρ x = ρ' y.
+
 
 End incl_def.
 
     Notation "ρ ≼ ρ'" := (im_incl ρ ρ') (at level 25).
     Notation "ρ ≼[ k ] ρ'" := (im_incl_k ρ ρ' k) (at level 25).
     Notation "ρ ⊆ ρ'" := (im_sub ρ ρ') (at level 25).
+    Notation "ρ ⊆[ k ] ρ'" := (im_sub_k ρ ρ' k) (at level 25).
 
 Section Construction.
 
@@ -85,8 +88,8 @@ Section Construction.
     Definition wit_env (ρ ρ_s: env M) φ := exists w, M ⊨[ρ_s w .: ρ] φ -> M ⊨[ρ] (∀ φ).
 
     Definition wit_env_ω (ρ ρ_s: env M) φ := (forall n: nat, M ⊨[ρ_s n .: ρ] φ) -> M ⊨[ρ] (∀ φ).
-    
 
+    
     Lemma incl_impl_wit_env ρ ρ' ρ_s: ρ ≼ ρ' 
         -> (forall φ, wit_env ρ' ρ_s φ) -> (forall φ, wit_env ρ ρ_s φ).
     Proof.
@@ -102,6 +105,20 @@ Section Construction.
         rewrite <- EH.
         apply (cons_w ρ ρ' σ (ρ_s ws)).
     Qed.
+(* 
+    Lemma incl_impl_wit_env' ρ ρ' ρ_s: ρ ⊆ ρ' 
+    -> (forall φ, wit_env ρ' ρ_s φ) -> (forall φ, wit_env ρ ρ_s φ).
+    Proof.
+        intros.
+        unfold "⊆" in H.
+        unfold wit_env in *.
+        destruct (find_bounded φ) as [n Hn].
+        induction n. 
+        - destruct (H0 φ) as [w Hw]; exists w.
+          intro. eapply sat_closed; admit.
+        - rewrite bounded_S_forall in Hn.
+          specialize (IHn Hn).
+    Qed. *)
 
     Lemma bounded_incl_impl_wit_env ρ ρ' ρ_s: (forall φ, wit_env ρ' ρ_s φ) 
         -> (forall φ k, bounded k φ -> ρ ≼[k] ρ' -> wit_env ρ ρ_s φ).
@@ -145,6 +162,60 @@ Section Construction.
         - apply H'.
     Qed.  
 
+    Import Lia Peano_dec.
+    
+
+    Lemma check_lemma (ρ ρ': env M) b:
+        ρ ⊆[b] ρ' -> exists (ξ : nat -> nat), forall x, x < b -> (ρ x) = (ρ' (ξ x)).
+    Proof.
+        induction b; cbn; [intros |].
+        - exists (fun _ => O); lia.
+        - intros.
+          destruct IHb as [ξ Pξ].
+          intros x Hx; apply (H x); lia. 
+          destruct (H b) as [w Hw]; [lia|].
+          exists (fun i => if (eq_nat_dec i b) then w else (ξ i)).
+          intros; destruct (eq_nat_dec x b) as [->| eH]; [easy|].
+          eapply Pξ; lia.  
+    Qed.
+
+    Lemma check_bounded_incl ρ ρ' φ k: bounded k φ -> ρ ⊆[k] ρ' -> 
+    exists σ, (M ⊨[ρ] φ <-> M ⊨[ρ'] φ[σ]) /\ 
+        (forall x, x < k -> (σ >> (eval M interp' ρ')) x = ρ x).
+    Proof.
+        intros H H'.
+        destruct (@check_lemma _ _ _ H') as [ξ Hξ].
+        exists (fun x => $ (ξ x)); split.
+        - rewrite sat_comp.  
+          apply bound_ext with k. exact H.
+          intros. cbn. now apply Hξ.
+        -  cbn. intros x Hx. now rewrite Hξ.
+    Qed.    
+
+    Lemma Cbounded_incl_impl_wit_env_ω ρ ρ' ρ_s: (forall φ, wit_env_ω ρ' ρ_s φ) 
+    -> (forall φ k, bounded k φ -> ρ ⊆[k] ρ' -> wit_env_ω ρ ρ_s φ).
+    Proof.
+        intros Rρ' φ k H Ink.
+        assert (bounded k (∀ φ)) as HS.
+        apply bounded_S_quant.
+        apply (bounded_up H); lia.
+        destruct (check_bounded_incl HS Ink ) as (σ & fH & EH).
+        specialize (Rρ' (φ[up σ])) as P.
+        intro Hp; rewrite fH. 
+        apply P; revert Hp.
+        intros H' n'.
+        rewrite sat_comp.
+        unshelve eapply (bound_ext _ H). exact (ρ_s n' .: ρ). 
+        intros n Ln. 
+        destruct n; cbn. {easy. }
+        rewrite <- EH.
+        - now rewrite (cons_w ρ ρ' σ (ρ_s n')).
+        - lia.
+        - apply H'.
+    Qed.
+
+
+
     End incl_prop.
 
     Section incl_Path.
@@ -162,6 +233,13 @@ Section Construction.
     Lemma trans_incl (a b c: env M): a ≼ b -> b ≼ c -> a ≼ c.
     Proof.
         unfold "≼"; intros.
+        destruct (H x) as [ny H'], (H0 ny) as [my H''].
+        exists my; congruence.
+    Qed.
+
+    Lemma trans_sub (a b c: env M): a ⊆ b -> b ⊆ c -> a ⊆ c.
+    Proof.
+        unfold "⊆"; intros.
         destruct (H x) as [ny H'], (H0 ny) as [my H''].
         exists my; congruence.
     Qed.
@@ -382,6 +460,179 @@ Section Construction.
 
     End Fixed_point_ω.
 
+    Section CFixed_point.
+
+    Variable F: nat -> nat -> nat -> M.
+
+    Variable init_ρ: nat -> M.
+
+    Hypothesis depandent_path_ω:
+        (forall n, F 0 n  = init_ρ) /\ forall n a, exists b, wit_rel_comp_ω (F n a) (F (S n) b).
+
+    Definition Cfix n y :=
+        match n with
+        | O => F 0 0 y
+        | S n => F (S n) (π__1 y) (π__2 y)
+        end.
+
+    Lemma mono_Cfix' a b: Cfix a ⊆ Cfix (a + b) .
+    Proof.
+        induction b.
+        - assert (a + 0 = a) as -> by lia. intro x; now exists x.
+        - assert (a + S b = S (a + b)) as -> by lia.
+        eapply trans_sub. exact IHb. 
+        destruct depandent_path_ω as [_ H].
+        destruct (a + b) eqn: E.
+        + unfold Cfix. destruct depandent_path_ω as [H1 H2].
+          destruct (H2 0 0) as [w Hw].
+          destruct  Hw as [_ Hw].
+          intro x. exists (encode w (2*x)).
+          now rewrite cantor_left, cantor_right.
+        + intro x. destruct (H (a + b) (π__1 x)) as [b' Hb'].
+          unfold Cfix; exists (encode b' (2 * (π__2 x))).
+          destruct Hb' as [_ Hb'].
+          specialize (Hb' (π__2 x)).
+          rewrite cantor_left, cantor_right.
+          now rewrite <- E.
+    Qed.
+
+    Lemma mono_Cfix a b: a < b -> Cfix a ⊆ Cfix b.
+    Proof.
+        assert (a < b -> Σ c, a + c = b) .
+        intro H; exists (b - a); lia.
+        intro aLb.
+        destruct (H aLb) as [c Pc].
+        specialize (mono_Cfix' a c).
+        now rewrite Pc. 
+    Qed.
+
+    Opaque encode_p.
+
+    Definition Cfix_i n := Cfix (π__1 n) (π__2 n).
+
+
+    Ltac Cantor := 
+        do 10 (unfold Cfix, Cfix_i; cbn; 
+               rewrite cantor_left + rewrite cantor_right; try easy).
+
+
+    Lemma Cunion_incl_ω n m: (F n m) ≼ Cfix_i.
+    Proof.
+        induction n.
+        intro x. 
+        exists (encode 0 x); unfold Cfix_i, Cfix; cbn.
+        rewrite cantor_left, cantor_right.
+        destruct depandent_path_ω.
+        rewrite H.
+        now rewrite H.
+        intro x.
+        exists (encode (S n) (encode m x));
+        Cantor.
+    Qed.
+
+    Lemma Cunion_incl_ω'' n m: (F (S n) m) ≼ (Cfix (S n)).
+    Proof.
+        intro x; exists (encode m x); Cantor.
+    Qed.
+    
+
+    Lemma Cunion_incl_ω' n: Cfix (S n) ≼ Cfix_i.
+    Proof.
+        intro x.
+        unfold Cfix_i, Cfix.
+        exists (encode (S n) x).
+        Cantor.
+    Qed.
+
+    Lemma Cunion_fixed_ω n m: wit_rel_ω (F n m) Cfix_i.
+    Proof.
+        split; intros.
+        - unfold wit_env. 
+          destruct depandent_path_ω as [_ H].
+          destruct (H n m) as [k [Hk1 Hk2]].
+          specialize(Hk1 φ).
+          specialize (Cunion_incl_ω (S n) k) as  Pws.
+          unfold "≼" in Pws.
+          intros H' n'.
+          apply Hk1.
+          intro w.
+          destruct (Pws w) as [w' ->].
+          apply H'.
+        - intro x.  destruct (Cunion_incl_ω n m x).
+        now exists x0.
+    Qed.
+
+    Lemma Cfix_n_in_Sn n φ:
+        wit_env_ω (Cfix (S n)) (Cfix (S (S n))) φ.
+    Proof.
+        destruct depandent_path_ω as [_ H].
+        destruct (find_bounded φ) as [k φk].
+        eapply Cbounded_incl_impl_wit_env_ω.
+        - intro phi.
+          destruct (H (S n) 0) as [b [Hb _]].
+          unfold wit_env_ω in *; intro H'.
+          apply Hb; intro w.
+          specialize (H' (encode b w)).
+          revert H'. Cantor.
+        - exact φk.
+        - intro x; intros _. unfold Cfix. 
+          admit. 
+    Admitted.
+    
+
+
+    Lemma Cunion_fixed_ω' n: wit_rel_ω (Cfix (S n)) Cfix_i.
+    Proof.
+        split; intros.
+        - unfold wit_env. 
+          destruct depandent_path_ω as [_ H].
+          intro Hc.
+          specialize (Cunion_incl_ω' n) as Pws.
+          unfold "≼" in Pws.
+
+          specialize (fun y => H (n) (π__1 y)).
+          unfold wit_rel_comp_ω in H.
+          unfold wit_env_ω in H.
+
+
+          destruct (H n) as [k [Hk1 Hk2]].
+          specialize(Hk1 φ).
+          unfold "≼" in Pws.
+    Admitted.
+
+
+    Lemma Cbounded_rel_ω b: 
+        Σ E: nat, forall x, x < b -> exists y, Cfix_i x = Cfix E y.
+    Proof.
+        destruct (bounded_cantor b) as [E PE].
+        exists E; intros x H.
+        unfold fixed.
+        specialize (PE _ H).
+        unfold Cfix_i.
+        specialize (@mono_Cfix _ _ PE) as H1.
+        destruct (H1 (π__2 x)) as [w Hw].
+        now exists w.
+    Qed.
+
+    Theorem CFixed_point_ω:
+        wit_rel_ω Cfix_i Cfix_i.
+    Proof.
+        split; intros.
+        - destruct (find_bounded φ) as [b bφ].
+          destruct (Cbounded_rel_ω b) as [E P].
+          (* enough (exists E: nat, forall x, x < b -> exists y, fixed x = F E y) as [E P]. *)
+          unshelve eapply Cbounded_incl_impl_wit_env_ω; [exact (Cfix E) |exact b | |easy |..].
+          + unfold Cfix. destruct E.
+            eapply Cunion_fixed_ω.
+            intro φ'.
+            specialize (Cunion_fixed_ω (S E)) as HE.
+            admit.
+          + intros x Lxb. apply (P x Lxb). 
+        - intro x; now exists x.
+    Admitted.
+
+    End CFixed_point.
+
 
     Section wit_rel_by_DC.
 
@@ -472,11 +723,16 @@ Section Construction.
         intros.
         destruct (@AC_form M (fun phi w => M ⊨[w .: ρ] phi -> M ⊨[ρ] (∀ phi))) as [F PF].
         - intro φ; destruct (DP (fun w => (M ⊨[w.:ρ] φ ))) as [w Hw].
-          constructor; exact (ρ O). exists w; intro Hx; cbn; now apply Hw.
+          exact (ρ O). exists (w tt); intro Hx; cbn; apply Hw; now intros [].
         - exists (fun n: nat => F (phi_ n)).
           intro φ; specialize (PF φ).
           now exists (nth_ φ); rewrite (Hphi φ).
     Qed.
+
+
+    Definition CAC_on A B (R: A -> B -> Prop) :=
+        (forall x, exists y, R x y) -> exists f: (A -> B), 
+            forall n, exists w, R n (f w).
 
     Definition CAC_app: 
         (forall A R, @CAC_on form A R) -> forall ρ, exists (W: nat -> M), forall φ, exists w, M ⊨[W w.:ρ] φ -> M ⊨[ρ] ∀ φ.
@@ -484,12 +740,11 @@ Section Construction.
         intros CAC ρ.
         destruct (CAC M (fun phi w => M ⊨[w .: ρ] phi -> M ⊨[ρ] (∀ phi))) as [F PF].
         - intro φ; destruct (DP (fun w => (M ⊨[w.:ρ] φ ))) as [w Hw].
-        constructor; exact (ρ O). exists w; intro Hx; cbn; now apply Hw.
-        - exists (fun n: nat => F (phi_ (π__1 n)) (phi_ (π__2 n))).
+        exact (ρ O). exists (w tt); intro Hx; cbn; now apply Hw; intros [].
+        - exists (fun n: nat => F (phi_ n)).
         intro φ; destruct (PF φ) as [w Pw].
-        exists (encode (nth_ φ) (nth_ w)).
-        rewrite cantor_left, cantor_right.
-        now rewrite (Hphi φ), (Hphi w).
+        exists ( (nth_ w)).
+        now rewrite (Hphi w).
     Qed.
 
     Definition path root:
@@ -538,34 +793,8 @@ Section Construction.
           now enough ( (w + (w + 0)) + 1 = (pi1 o + (pi1 o + 0)) + 1) by lia.
         - intro x. destruct (Even_Odd_dec (2 * x)) eqn: E.
           destruct e; cbn; enough (x = x0) as -> by easy; nia.
-          exfalso; eapply (@not_Even_Odd_both (2*x)); split; [now exists x| easy].  
+          exfalso; eapply (@not_Even_Odd_both (2*x)); split; [now exists x| easy].
     Qed.
-
-    Definition CDC_path root:
-    exists F, F O = root /\ forall n, wit_rel_comp_ω (F n) (F (S n)).
-    Proof.
-        unshelve eapply (DC  _ root).
-        intro ρ; destruct (AC_app_ω ρ) as [W P].
-        exists (fun n => match Even_Odd_dec n with 
-                | inl L => ρ (projT1 L)
-                | inr R => W (projT1 R)
-                end ); split.
-        - intros phi; specialize (P phi) as Pw.
-        intros H' w'.
-        apply Pw; intro w.
-        assert (Odd (2 * w + 1)) by (exists w; lia).
-        destruct (Even_Odd_dec (2 * w + 1)) eqn: E.
-        now exfalso; apply (@not_Even_Odd_both (2*w + 1)).
-        specialize (H' (2*w + 1)).
-        rewrite E in H'.
-        specialize (projT2 o) as H_; cbn in H_.
-        enough (pi1 o = w) as <- by easy.
-        now enough ( (w + (w + 0)) + 1 = (pi1 o + (pi1 o + 0)) + 1) by lia.
-        - intro x. destruct (Even_Odd_dec (2 * x)) eqn: E.
-        destruct e; cbn; enough (x = x0) as -> by easy; nia.
-        exfalso; eapply (@not_Even_Odd_both (2*x)); split; [now exists x| easy].  
-    Qed.
-
     End wit_rel_by_DC.
 
 End Construction.

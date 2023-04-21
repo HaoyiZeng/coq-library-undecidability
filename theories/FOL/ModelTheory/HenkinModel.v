@@ -304,11 +304,11 @@ Section TermModel.
     Theorem Tarski_Vaught_Test_ω': 
         full_witness_condition_ω -> exists (N: model), N ⪳ M.
     Proof.
-        intro fix_h. exists N. 
+        intro fix_h. exists N.
         exists morphism. intros φ. induction φ using form_ind_subst; intro; try easy.
         - cbn; now rewrite map_map, map_eval_eval.
         - destruct b0; cbn; intuition.
-        - destruct q; split.
+        - destruct q. split.
             + intros H'; destruct (Hphi (φ[up ρ])) as [i phi].
             specialize (@fix_h (φ[up ρ])) as h_prop.
             unfold morphism; rewrite <- sat_comp.

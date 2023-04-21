@@ -23,12 +23,13 @@ Notation sig := sigT.
 Notation Sig := existT.
 Notation pi1 := projT1.
 
-Section ChoiceFacts.
+(* Section ChoiceFacts.
 
     Goal ODC -> SDP_ω.
     Proof.
         intros ODC A P [].
         unshelve destruct (@ODC A (fun _ => P) X) as [f [_ Hf]].
+        - intro x. exists 
         exists f.
         intro H'. intro n'. 
         now specialize (Hf n' H').
@@ -63,7 +64,7 @@ Section ChoiceFacts.
         now exists k.
     Qed.
 
-End ChoiceFacts.
+End ChoiceFacts. *)
 
 
 Section Least_witness.
@@ -460,4 +461,266 @@ Section Cantor.
     Qed.
 
 End Cantor.
+
+Require Import Lia.
+
+Inductive reachable {X} (R : X -> X -> Prop) x0 x : Prop :=
+| base : R x0 x -> reachable R x0 x
+| step y : reachable R x0 y -> R y x -> reachable R x0 x.
+
+Definition reachable' {X} (R : X -> X -> Prop) x0 x :=
+  exists f : nat -> X, exists N, f 0 = x0 /\ f (S N) = x /\ forall n, n <= N -> R (f n) (f (S n)).
+
+Lemma reach_reach' {X} (R : X -> X -> Prop) x0 x :
+  reachable R x0 x -> reachable' R x0 x.
+Proof.
+  induction 1.
+  - exists (fun n => match n with 0 => x0 | _ => x end), 0. split; trivial. split; trivial.
+    intros n. inversion 1; subst. apply H.
+  - destruct IHreachable as (f & N & H1 & H2 & H3).
+    exists (fun n => if PeanoNat.Nat.leb n (S N) then f n else x), (S N). split. 2: split.
+    + rewrite Compare_dec.leb_correct; try lia. apply H1.
+    + rewrite Compare_dec.leb_correct_conv; try lia. reflexivity.
+    + intros n HN. assert (n <= N \/ n = S N) as [Hn| ->] by lia.
+      * rewrite ?Compare_dec.leb_correct; try lia. now apply H3.
+      * rewrite Compare_dec.leb_correct, Compare_dec.leb_correct_conv; try lia. now rewrite H2.
+Qed.
+
+
+(* Lemma DC_root :
+  (forall X (R : X -> X -> Prop), X -> (forall x, exists y, R x y) -> exists f : nat -> X, forall n, R (f n) (f (S n)))
+  -> FunctionalDependentChoice.
+Proof.
+  intros H X R HR x0.
+  destruct (HR x0) as [y0 Hy0]. pose (a0 := exist _ y0 (base R _ _ Hy0)).
+  destruct (H { x | reachable R x0 x } (fun a b => R (proj1_sig a) (proj1_sig b)) a0) as [f Hf].
+  - intros [x Hx]. destruct (HR x) as [y Hy]. exists (exist _ y (step R x0 y x Hx Hy)). apply Hy.
+  - destruct (f 0) as [x Hx] eqn : H0.
+    destruct (reach_reach' _ _ _ Hx) as (g & N & H1 & H2 & H3).
+    exists (fun n => if PeanoNat.Nat.leb n N then g n else proj1_sig (f (n - N - 1))). split.
+    + cbn. apply H1.
+    + intros n. assert (n <= N \/ n > N) as [Hn|Hn] by lia.
+      * assert (S n <= N \/ n = N) as [Hn'| ->] by lia. 
+        -- rewrite ?Compare_dec.leb_correct; try lia. now apply H3.
+        -- rewrite Compare_dec.leb_correct, Compare_dec.leb_correct_conv; try lia.
+           assert (S N - N - 1 = 0) as -> by lia. rewrite H0. cbn. rewrite <- H2. apply H3. auto.
+      * rewrite ?Compare_dec.leb_correct_conv; try lia.
+        assert (S n - N - 1 = S (n - N - 1)) as -> by lia. apply Hf.
+Qed. *)
+
+
+
+Definition BDP_scheme (domain range: Type) :=
+    forall P: domain -> Prop, domain -> exists f: range -> domain,
+        (forall n: range, P (f n)) -> forall x, P x.
+
+Definition BDP'_scheme (domain range: Type) :=
+    forall P: domain -> Prop, domain -> exists f: range -> domain,
+        (exists x, P x) -> (exists m, P (f m)).
+
+Definition BAC_scheme (domain1 domain2 range: Type) :=
+    forall R: domain1 -> domain2 -> Prop, (forall x, exists y, R x y) ->
+        exists f: domain1 -> range -> domain2, forall n, exists m, R n (f n m).
+
+Notation BDP_on A := (forall domain, @BDP_scheme domain A).
+Notation BDP'_on A := (forall domain, @BDP'_scheme domain A).
+
+Notation BDP := (@BDP_on nat).
+Notation BDP' := (@BDP'_on nat).
+
+Notation DP := (@BDP_on unit).
+Notation DP' := (@BDP'_on unit).
+
+Notation BDP1 := (@BDP_scheme nat unit).
+Notation BDP'1 := (@BDP'_scheme nat unit).
+
+Notation CAC := (forall A: Type, @BAC_scheme nat A unit).
+Notation BCAC := (forall A: Type, @BAC_scheme nat A nat).
+Notation AC00 := (@BAC_scheme nat nat unit).
+
+Definition KS := (forall P: Prop, exists f: nat -> bool, P <-> (exists n, f n = true)).
+Definition WPFP := (forall b: nat -> bool, exists a: nat -> bool, (exists n, b n = false) <-> (forall n, a n = true)).
+Definition LEM := (forall P, P \/ ~ P).
+Definition LPO := (forall f : nat -> bool, (forall x, f x = false) \/ (exists x, f x = true)).
+Definition ODC_on A (R: A -> A -> Prop) :=
+    forall w,
+        exists f : nat -> A, (forall x, exists y, R x y) -> f 0 = w /\ forall n, R (f n) (f (S n)).
+
+Notation ODC := (forall A R, @ODC_on A R).
+
+Fact ODC_implies_BDP': ODC -> BDP'.
+Proof.
+    intros ODC A P a.
+    destruct (ODC A (fun x => P) a).
+    exists x; intro H'.
+    destruct H.
+    intro a'; apply H'.
+    exists 42.
+    apply H0.
+Qed.
+
+Lemma CAC_iff_BCAC_AC00:
+    CAC <-> BCAC /\ AC00.
+Proof.
+    split.
+    - intros CAC; split.
+      + intros A R totalR.
+        destruct (CAC A R totalR) as [x Px].
+        exists (fun n _ => x n tt).
+        intros n; destruct (Px n) as [x' Px'].
+        exists 42.
+        now destruct x'.
+      + exact (CAC nat).
+    - intros [BCAC AC00] A R totalR.
+      destruct (BCAC A R totalR) as [f Pf].
+      destruct (AC00 (fun x y => R x (f x y)) Pf) as [g Pg].
+      now exists (fun n t => f n (g n t)).
+Qed.
+
+Fact DP_correct: DP <-> (forall A (P: A -> Prop), A -> exists x, P x -> forall x, P x).
+Proof.
+    split; intros.
+    - destruct (H A P); try easy.
+      exists (x tt); intro h.
+      apply H0. now intros [].
+    - intros P a. destruct (H domain P); try easy.
+      exists (fun _ => x).
+      intros; now apply H0, H1.
+Qed.
+
+Fact DP'_correct: DP' <-> (forall A (P : A -> Prop), A -> exists x, (exists x, P x) -> P x).
+Proof.
+    split; intros.
+    - destruct (H A P); try easy.
+      exists (x tt); intro h.
+      destruct H0 as [[] Pu]; easy. 
+    - intros P a. destruct (H domain P); try easy.
+      exists (fun _ => x).
+      intros. exists tt. now apply H0, H1.
+Qed.
+
+Lemma DP_LEM : DP -> LEM.
+Proof.
+  intros dp P.
+  rewrite DP_correct in dp.
+  destruct (dp (option (P \/ ~ P)) (fun x => match x with Some x => ~ P | _ => True end) None) as [[x|] H].
+  - exact x.
+  - right. intros HP. now apply (H I (Some (or_introl HP))).
+Qed.
+
+Lemma DP'_LEM : DP' -> LEM.
+Proof.
+  intros dp P.
+  rewrite DP'_correct in dp.
+  destruct 
+  (dp (option (P \/ ~ P)) 
+      (fun x => match x with 
+            |Some x => P 
+            | _ => False 
+            end) 
+      None) as [[x|] H].
+  - exact x.
+  - right. intros HP. apply H. exists (Some (or_introl HP)). exact HP.
+Qed.
+
+Lemma DP_LEM' :
+  (forall X (p : X -> Prop), X -> exists x, p x -> forall y, p y) -> forall P, P \/ ~ P.
+Proof.
+  intros dp P. pose (A := { x : unit | P \/ ~ P }).
+  destruct (dp (option A) (fun x => match x with Some x => ~ P | _ => True end) None) as [[x|] H].
+  - exact (proj2_sig x).
+  - right. intros HP. refine (H I (Some _) HP). exists tt. now left.
+Qed.
+
+Lemma KS_LPO_LEM: KS -> LPO -> LEM.
+Proof.
+    intros KS LPO P. 
+    destruct (KS P) as [f Pf].
+    destruct (LPO f) as [H|H].
+    - right; intro p. 
+      rewrite Pf in p.
+      destruct p as [w Pw].
+      specialize (H w).
+      congruence.
+    - left; now rewrite Pf.
+Qed.
+
+Lemma BDP_LPO_LEM : BDP -> LPO -> LEM.
+Proof.
+    intros dp lpo P.
+    destruct (dp (option (P \/ ~ P)) (fun x => match x with Some x => ~ P | _ => True end) None) as [f H].
+    destruct (lpo (fun n => if f n then true else false)) as [Hf|[x Hx]].
+    - right. intros HP. refine (H _ (Some (or_introl HP)) HP).
+        intros n. specialize (Hf n). destruct (f n); try discriminate. trivial.
+    - destruct (f x); try discriminate. trivial.
+Qed.
+
+Lemma BDP_nat_LPO: BDP1 -> LPO.
+Proof.
+    intros dp f. 
+    specialize (dp (fun n => f n = false)).
+    destruct dp; [exact 42|].
+    destruct (f (x tt)) eqn: E.
+    - right. now exists (x tt).
+    - left.  apply H. now intros [].
+Qed.
+
+Definition IP :=
+    forall (A:Type) (P:A -> Prop) (Q:Prop),
+        inhabited A ->
+            (Q -> exists x, P x) -> exists x, Q -> P x.
+
+Definition BIP :=
+    forall (A:Type) (P:A -> Prop) (Q:Prop),
+        inhabited A ->
+            (Q -> exists x, P x) -> exists (f: nat -> A), Q -> (exists m, P (f m)).
+
+Fact DC_IP_implies_ODC: DC -> IP -> ODC.
+Proof.
+    intros DC IP A R w.
+    apply IP. 
+    constructor; exact (fun _ => w).
+    intros DC'%(DC A R).
+    apply DC'.
+Qed.
+
+Goal DP' -> IP.
+Proof.
+    intros.
+    intros A P Q [] HP.
+    destruct (H A P X). 
+    exists (x tt); intros Q'%HP.
+    destruct H0 as [[] P']; easy.
+Qed.
+
+Goal IP -> DP'.
+Proof.
+    intros IP A P.
+    intros IA.
+    destruct (IP A P (exists x, P x)).
+    now constructor.
+    easy.
+    exists (fun v => x).
+    intros P'. exists tt. now apply H.
+Qed.
+
+Goal BDP' -> BIP.
+Proof.
+    intros BDP' A P Q [] HP.
+    destruct (BDP' A P X).
+    exists x; intros Q'%HP.
+    now apply H.
+Qed.
+
+Goal BIP -> BDP'.
+Proof.
+    intros BIP A P a.
+    destruct (BIP A P (exists x, P x)). { now constructor. }
+    easy.
+    now exists x.
+Qed.
+
+
+
+
 
