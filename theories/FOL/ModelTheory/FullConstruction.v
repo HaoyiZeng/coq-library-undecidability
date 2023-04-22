@@ -398,4 +398,5 @@ Section Result.
         now exists N, (morphism (ι F)).
     Qed.
 
+
 End Result.

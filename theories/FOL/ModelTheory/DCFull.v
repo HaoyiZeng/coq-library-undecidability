@@ -21,7 +21,6 @@ Section DC.
         forall (Σf : funcs_signature) (Σp : preds_signature) (M: model), forall m,
             exists (N: model), a_coutable_model N /\ (exists h: N -> M, elementary_homomorphism h /\ exists n: N, h n = m).
 
-
     Instance interp__A : interp A :=
     {
         i_func := fun F v => match F return A with end;
@@ -67,7 +66,7 @@ Section DC.
         exists f. intro b.
         destruct (total b) as [c Rbc], (sur c) as [m p].
         exists m. now rewrite p.
-    Qed.
+    Qed.    
 
     Section dec__R_full.
 
@@ -224,7 +223,32 @@ Section DC.
 
 End DC.
 
+Section DC_by_AC00.
+
+
+    Definition BDC := forall (A: Type) (R: A -> A -> Prop),
+        (forall x, exists y, R x y) ->
+        exists f: nat -> A, forall n, exists m, R (f n) (f m).
+
+    Lemma BDC_AC00_DC:
+        BDC -> AC00 -> DC .
+    Proof.
+        intros BDC AC00 A R tR. 
+        destruct (BDC A R tR) as [f Hf].
+        destruct (AC00 (fun n m => R (f n) (f m)) Hf) as [g Hg].
+        exists (fun n => f (iter (fun n => g n tt) n 0)).
+        intro n; cbn.
+        now destruct (Hg ((iter (fun n : nat => g n tt) n 0))) as [[] Hg'].
+    Qed.
+    
+    
+End DC_by_AC00.
+
+
+
 Section LS_imples_BCAC.
+
+    Hypothesis LS: (forall F P (M: @model F P), 𝕋 ⪳ M).
 
     Variable A: Type.
     Variable P: nat -> A -> Prop.
@@ -238,25 +262,26 @@ Section LS_imples_BCAC.
         i_atom := fun n v => P n (hd v)
     }.
 
+    Instance model_A: model :=
+    {
+        domain := A;
+        interp' := interp_A
+    }.
+
     Variable E_term: nat -> term. 
     Variable term_E: term -> nat. 
     Hypothesis E_Κ: forall w, E_term (term_E w) = w.
 
-    Definition LS_term :=
-        forall (Σf : funcs_signature) (Σp : preds_signature) (M: Type) (i_M: interp M), forall m,
-            exists (N: interp term), (exists h: term -> M, (forall phi (ρ: env term), ρ ⊨ phi <-> (ρ >> h) ⊨ phi) /\ exists n: term, h n = m).
+    Definition BCAC_on (B: Type) (P': nat -> B -> Prop) :=
+        (forall x, exists y, P' x y) ->
+            exists f: nat -> (nat -> B), forall n, exists m, P' n (f n m).
 
-    Definition BCAC :=
-        A -> (forall x, exists y, P x y) ->
-            exists f: nat -> (nat -> A), forall n, exists m, P n (f n m).
-
-    Theorem LS_implies_BCAC:
-        LS_term -> BCAC.
+    Theorem LS_implies_BCAC: (@BCAC_on A P).
     Proof.
-        intros LS X total_R.
+        intros total_R.
         assert (forall n ρ, ρ ⊨ (∃ (atom _ _ _ _ n (cons _ ($0) _ (nil _))))).
         - cbn; intros; apply total_R.
-        - destruct (LS _ _ A interp_A X) as [N [h [ele_el__h [n Eqan]]] ].
+        - destruct (LS model_A) as [N [h ele_el__h ] ].
           assert ( forall m (ρ : env term), ρ ⊨ (∃ atom m (cons term $0 0 (nil term)))).
           + intro m; specialize (ele_el__h (∃ atom m (cons term $0 0 (nil term)))).
             intro rho; rewrite ele_el__h.
@@ -271,11 +296,23 @@ Section LS_imples_BCAC.
             now cbn in Hx.
     Qed.
 
+    Theorem LS_AC00_implies_CAC: (forall A R, @BCAC_on A R) -> AC00 -> CAC.
+    Proof.
+        intros BCAC AC00 B R tR.
+        destruct (BCAC B R tR) as [f Hf].
+        destruct (AC00 (fun n m => R n (f n m)) Hf).
+        exists (fun n _ => f n (x n tt)).
+        intro n; exists tt.
+        now destruct (H n) as [[] H'].
+    Qed.
 
 End LS_imples_BCAC.
 
+
+
 Section LS_imples_AC_κ.
 
+    Hypothesis LS: (forall F P (M: @model F P), 𝕋 ⪳ M).
     Variable A: Type.
     Variable κ: Type.
     Variable P: κ -> A -> Prop.
@@ -289,6 +326,12 @@ Section LS_imples_AC_κ.
         i_atom := fun n v => P n (hd v)
     }.
 
+    Instance model_κ: model :=
+    {
+        domain := A;
+        interp' := interp_κ
+    }.
+
     Variable E_term: κ -> term. 
     Variable term_E: term -> κ. 
     Hypothesis E_Κ: forall w, E_term (term_E w) = w.
@@ -298,12 +341,12 @@ Section LS_imples_AC_κ.
 
 
     Theorem LS_implies_WAC_κ:
-        LS_term -> (@WAC_on κ A P).
+        @WAC_on κ A P.
     Proof.
-        intros LS [] total_R.
+        intros [] total_R.
         assert (forall n ρ, ρ ⊨ (∃ (atom _ _ _ _ n (cons _ ($0) _ (nil _))))).
         - cbn; intros; apply total_R.
-        - destruct (LS _ _ A interp_κ X) as [N [h [ele_el__h [n Eqan]]] ].
+        - destruct (LS model_κ) as [N [h ele_el__h] ].
           assert ( forall (m: κ) (ρ : env term), ρ ⊨ (∃ atom m (cons term $0 0 (nil term)))).
           + intro m; specialize (ele_el__h (∃ atom m (cons term $0 0 (nil term)))).
             intro rho; rewrite ele_el__h.
@@ -333,14 +376,20 @@ Section BDP'.
             i_atom := fun P' v => P (hd v)
         }.
 
+    Instance model__U (A: Type) (P: A -> Prop): model := 
+        {
+            domain := A;
+            interp' := (@interp__U A P)
+        }.
+
     Variable tnth_: nat -> term. 
     Hypothesis Hterm: forall t, exists n, tnth_ n = t. 
 
     Lemma LS_imples_BDP': 
-        LS_term -> BDP'.
+        (forall M, 𝕋 ⪳ M) -> BDP'.
     Proof.
         intros LS A P a.
-        destruct (LS _ _ _ (interp__U P) a) as [i_N [h [emb inb]]].
+        destruct (LS (model__U P)) as [i_N [h emb]].
         exists (fun n => h (tnth_ n)).
         specialize (emb (∃ (atom tt) (cons _ ($0) 0 (nil _))) var) as emb'; cbn in emb'.
         intro H'.
@@ -355,10 +404,10 @@ Section BDP'.
     Qed.
 
     Lemma LS_imples_BDP: 
-    LS_term -> BDP.
+        (forall M, 𝕋 ⪳ M) -> BDP.
     Proof.
         intros LS A P a.
-        destruct (LS _ _ _ (interp__U P) a) as [i_N [h [emb inb]]].
+        destruct (LS (model__U P)) as [i_N [h emb]].
         exists (fun n => h (tnth_ n)).
         specialize (emb (∀ (atom tt) (cons _ ($0) 0 (nil _))) var) as emb'; cbn in emb'.
         intro H'; apply emb'.
