@@ -155,45 +155,8 @@ Section What_is_your_choice.
 
     Implicit Type (A: Type).
 
-    Definition DP_on A (P: A -> Prop):=
-        inhabited A -> 
-            exists x, P x -> forall k, P k.
-
-    Definition DP_ω_on A (P: A -> Prop) :=
-        inhabited A -> 
-            exists f: nat -> A, (forall n, P (f n)) -> forall k, P k.
-
-    Definition NDP_ω_on A (P: A -> Prop) :=
-        inhabited A -> 
-            exists f: nat -> A, (forall n, ~ P (f n)) -> forall k, ~ P k.
-
-    Definition SDP_ω_on A (P: A -> Prop) :=
-        inhabited A -> 
-            exists f: nat -> A, (exists x, P x) -> (exists n, P (f n)).
-
-    Definition DC_on A (R: A -> A -> Prop) :=
-        (forall x, exists y, R x y) ->
-            forall w, exists f: nat -> A, f O = w /\ forall n, R (f n) (f (S n)).
-
-    Definition CDC_on A (R: A -> A -> Prop) :=
-        (forall x, exists y, R x y) ->
-            forall w: A, exists f: nat -> nat -> A, 
-                (forall b, f O b = w) /\  forall n m, exists k, R (f n m) (f (S n) k).
-
-    Definition DC_weaker_on A (R: A -> A -> Prop) :=
-        (forall x y, R x y \/ ~(R x y)) -> (forall x, exists y, R x y) ->
-            forall w, exists f: nat -> A, f O = w /\ forall n, R (f n) (f (S n)).
-
-    Definition ODC_on A (R: A -> A -> Prop) :=
-        forall w,
-            exists f : nat -> A, (forall x, exists y, R x y) -> f 0 = w /\ forall n, (forall y, R (f n) y).
-
     Definition function_rel' {X Y} (P: X -> Y -> Prop) :=
         forall x, exists! y, P x y.
-
-    Definition PDC_on A (R: A -> A -> Prop)  := 
-        (forall x, exists y, R x y) -> forall w,
-            exists P: nat -> A -> Prop, function_rel' P /\ P 0 w /\ forall n, exists x y,  P n x /\ P (S n) y /\ R x y. 
 
     Definition AC_on A B (R: A -> B->Prop) :=
         (forall n, exists y, R n y) -> exists f : A -> B, forall n, R n (f n).
@@ -208,13 +171,6 @@ Section What_is_your_choice.
 
 End What_is_your_choice.
 
-Notation DP := (forall A P, @DP_on A P).
-Notation DP_ω := (forall A P, @DP_ω_on A P).
-Notation NDP_ω := (forall A P, @NDP_ω_on A P).
-Notation SDP_ω := (forall A P, @SDP_ω_on A P).
-Notation DC := (forall A R, @DC_on A R).
-Notation ODC := (forall A R, @ODC_on A R).
-Notation PDC := (forall A R, @PDC_on A R).
 Notation AC := (forall A B R, @AC_on A B R).
 Notation AC_ω := (forall A R, @AC_on nat A R).
 Notation AC_ B := (forall A R, @AC_on B A R).
@@ -284,18 +240,7 @@ Section LS_theorem.
         forall (Σf : funcs_signature) (Σp : preds_signature) (M: Type) (i_M: interp M), forall m,
             exists (N: interp term), (exists h: term -> M, (forall phi (ρ: env term), ρ ⊨ phi <-> (ρ >> h) ⊨ phi) /\ exists n: term, h n = m).
 
-End LS_theorem.
+End LS_theorem. 
 
-Goal ODC -> SDP_ω.
-Proof.
-    intros H A P [].
-    destruct (H A (fun x => P) X).
-    exists x.
-    intro H'.
-    destruct H0.
-    intro a; apply (H').
-    exists 42.
-    apply H1. exact 42.
-Qed.
 
 

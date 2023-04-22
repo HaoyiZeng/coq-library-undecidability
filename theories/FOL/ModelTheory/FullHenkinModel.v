@@ -1,4 +1,3 @@
-From Undecidability Require Import Synthetic.EnumerabilityFacts Synthetic.ListEnumerabilityFacts Shared.ListAutomation.
 Require Import Undecidability.FOL.Completeness.TarskiCompleteness.
 Require Import Undecidability.FOL.ModelTheory.FullModelNotation.
 Local Set Implicit Arguments.

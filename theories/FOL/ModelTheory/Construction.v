@@ -1,5 +1,6 @@
 Require Import Undecidability.FOL.ModelTheory.Core.
 Require Import Coq.Arith.Compare_dec.
+Import Lia Peano_dec.
 Require Import Undecidability.FOL.ModelTheory.SearchNat.
 Require Import Undecidability.FOL.ModelTheory.HenkinModel.
 
@@ -162,8 +163,7 @@ Section Construction.
         - apply H'.
     Qed.  
 
-    Import Lia Peano_dec.
-    
+
 
     Lemma check_lemma (ρ ρ': env M) b:
         ρ ⊆[b] ρ' -> exists (ξ : nat -> nat), forall x, x < b -> (ρ x) = (ρ' (ξ x)).
@@ -416,8 +416,7 @@ Section Construction.
     Lemma union_fixed_ω n: wit_rel_ω (F n) fixed_ω.
     Proof.
         split; intros.
-        - unfold wit_env. 
-          destruct depandent_path_ω as [_ H].
+        - destruct depandent_path_ω as [_ H].
           destruct (H n) as [H_ H_'].
           specialize (H_ φ) as H'. 
           (* destruct (H'' w) as [w' Pw]. *)
@@ -656,7 +655,7 @@ Section Construction.
     Variable nth_ : form -> nat.
     Hypothesis Hphi : forall phi,  phi_ (nth_ phi) = phi.
 
-    Hypothesis DC: DC.
+    Hypothesis DC: DC_root.
 
     Theorem AC_ω: AC_ω.
      Proof.
@@ -692,7 +691,7 @@ Section Construction.
     Qed.
 
     Hypothesis DP: DP.
-    Hypothesis DP_ω: DP_ω.
+    Hypothesis DP_ω: BDP.
 
     Lemma iterater_snd P: (forall n, P (π__2 n)) -> (forall n, P n).
     Proof.
@@ -707,7 +706,7 @@ Section Construction.
         intros.
         destruct (@AC_form (nat -> M) (fun phi h => (forall w, M ⊨[(h w) .: ρ] phi) -> M ⊨[ρ] (∀ phi))) as [F PF].
         - intro φ; destruct (DP_ω (fun w => (M ⊨[w.:ρ] φ ))) as [w Hw].
-          constructor; exact (ρ O). exists w; intro Hx; cbn; now apply Hw.
+          exact (ρ O). exists w; intro Hx; cbn; now apply Hw.
         - exists (fun n: nat => F (phi_ (π__1 n)) (π__2 n)).
           intro φ; specialize (PF φ).
           intro H'. apply PF.
@@ -728,7 +727,6 @@ Section Construction.
           intro φ; specialize (PF φ).
           now exists (nth_ φ); rewrite (Hphi φ).
     Qed.
-
 
     Definition CAC_on A B (R: A -> B -> Prop) :=
         (forall x, exists y, R x y) -> exists f: (A -> B), 
@@ -812,7 +810,8 @@ Section Result.
         DP -> DC -> forall (M: model) (root: env M), exists (N: model), N ⪳ M.
     Proof.
         intros DP DC M root.
-        destruct (path Hphi DC DP) with (root := root) as [F PF].
+        specialize (DC_with_root DC) as DC'.
+        destruct (path Hphi DC' DP) with (root := root) as [F PF].
         pose (depandent_path_comp PF) as Incl;
         pose (Fixed_point PF) as Fixed_point.
         apply Tarski_Vaught_Test' with (phi_ := phi_) (h := fixed F).
@@ -826,7 +825,8 @@ Section Result.
             exists (N: model) (mor: N -> M), N ⪳[mor] M /\ root ⊆ mor.
     Proof.
         intros DP DC M root.
-        destruct (path Hphi DC DP) with (root := root) as [F PF].
+        specialize (DC_with_root DC) as DC'.
+        destruct (path Hphi DC' DP) with (root := root) as [F PF].
         pose (depandent_path_comp PF) as Incl;
         pose (Fixed_point PF) as Fixed_point.
         apply Tarski_Vaught_Test_with_root with (phi_ := phi_) (h := fixed F) (root := root).
@@ -837,10 +837,11 @@ Section Result.
     Qed.
 
     Theorem LS_downward_from_DPω_and_DC: 
-        DP_ω -> DC -> forall (M: model) (root: env M), exists (N: model), N ⪳ M.
+        BDP -> DC -> forall (M: model) (root: env M), exists (N: model), N ⪳ M.
     Proof.
         intros DP_ω DC M root.
-        destruct (path_ω Hphi DC DP_ω ) with (root := root) as [F PF].
+        specialize (DC_with_root DC) as DC'.
+        destruct (path_ω Hphi DC' DP_ω ) with (root := root) as [F PF].
         pose (depandent_path_comp_ω PF) as Incl;
         pose (Fixed_point_ω PF) as Fixed_point.
         apply Tarski_Vaught_Test_ω' with (phi_ := phi_) (h := fixed F).

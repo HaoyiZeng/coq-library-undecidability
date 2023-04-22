@@ -147,7 +147,7 @@ Section DC.
 
     Hypothesis dec__R: forall x y, dec (R x y).
 
-    Lemma LS_imples_DC: Core.LS_countable -> @DC_on A R.
+    Lemma LS_imples_DC: Core.LS_countable -> @DC_root_on A R.
     Proof using XM dec__R.
         intros LS total a.
         destruct (LS _ _ Model__A a) as [N [[f sur] [h [ele_el__h [n Eqan]]]]].
@@ -202,10 +202,10 @@ Section DP.
     Variable tnth_: nat -> term. 
     Hypothesis Hterm: forall t, exists n, tnth_ n = t. 
 
-    Lemma LS_imples_DP_ω: 
-        LS_term -> DP_ω.
+    Lemma LS_imples_BDP: 
+        LS_term -> BDP.
     Proof.
-        intros LS A P [a].
+        intros LS A P a.
         destruct (LS _ _ _ (interp__U P) a) as [i_N [h [emb inb]]].
         exists (fun n => h (tnth_ n)).
         specialize (emb (∀ (atom tt) (cons _ ($0) 0 (nil _))) var) as emb'; cbn in emb'.
@@ -215,5 +215,6 @@ Section DP.
         rewrite emb; unfold ">>".
         now destruct (Hterm d) as [x <-].
     Qed.
+
 End DP.
 
