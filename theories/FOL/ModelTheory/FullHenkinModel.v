@@ -83,11 +83,8 @@ Section Henkin_Env.
             /\
         (forall phi,  (M ⊨[h] (∃ phi) -> exists m, M ⊨[h m .: h] phi)). 
 
-    Definition elementary_syntactic_homomorphism {M: model} (i_term: interp term) (h: term -> M) :=
-        forall phi ρ, ρ ⊨ phi <-> M ⊨[ρ >> h] phi.
-
     Theorem Henkin_env_el: 
-        Henkin_env -> exists (N: interp term), elementary_syntactic_homomorphism N morphism.
+        Henkin_env -> 𝕋 ⪳[morphism] M.
     Proof.
         intros [fix_h fix_h']. exists interp_term.
         intros φ. induction φ using form_ind_subst; intro; try easy.

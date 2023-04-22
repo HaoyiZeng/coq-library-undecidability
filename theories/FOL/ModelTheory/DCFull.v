@@ -2,54 +2,14 @@ Require Import Undecidability.FOL.FullSyntax.
 Require Export Undecidability.FOL.Syntax.Theories.
 Require Import Undecidability.FOL.Syntax.BinSig.
 Require Import Undecidability.FOL.ModelTheory.SearchNat.
+Require Import Undecidability.FOL.ModelTheory.FullModelNotation.
 
-
-Require Export Vector.
-Notation vec := t.
-
-Section model.
-    Context {Σ_funcs : funcs_signature}.
-    Context {Σ_preds : preds_signature}.
-
-    Class model := 
-    {
-    domain : Type;
-    interp' : interp domain
-    }.
-    Coercion domain : model >-> Sortclass.
-
-End model.
-
-Arguments sat {_ _ _ _ _} _ _, {_ _ _} _ {_} _ _.
-Arguments interp' {_ _} _, {_ _ _}.
-Arguments i_atom {_ _} _ _ _ _.
-
-Notation "pred ₚ[ M ] v" := (i_atom _ (interp' M) pred v) (at level 19).
-Notation "Model ⊨[_] phi" := (forall p, sat (interp' Model) p phi) (at level 21).
-Notation "Model ⊨[ ρ ] phi" := (sat (interp' Model) ρ phi) (at level 21).
-
-Section Elementary.
-    Context {Σ_funcs : funcs_signature}.
-    Context {Σ_preds : preds_signature}.
-    Context {ff : falsity_flag}.
-
-    Definition elementary_equivalence M N :=
-        forall phi, closed phi -> (M ⊨[_] phi) <-> (N ⊨[_] phi).
-
-    Definition elementary_homomorphism {M N: model} (h: M -> N) :=
-        forall phi ρ, M ⊨[ρ] phi <-> N ⊨[ρ >> h] phi.
-
-End Elementary.
-Notation "N ⪳ M"  := (exists h: N -> M, elementary_homomorphism h) (at level 30).
 
 Section DC.
 
     Variable A: Type.
+    Variable a: A.
     Variable R: A -> A -> Prop.
-
-    Definition DC:=
-        (forall x, exists y, R x y) -> forall w,
-            (exists f : nat -> A, f 0 = w /\ forall n, R (f n) (f (S n))).
 
     Definition surjective {M N} (f: M -> N) :=
         forall n: N, exists m: M, f m = n.
@@ -113,9 +73,9 @@ Section DC.
 
     Hypothesis dec__R: forall x y, dec (R x y).
 
-    Lemma LS_imples_DC: LS_countable -> DC.
-    Proof using dec__R.
-        intros LS total a.
+    Lemma LS_imples_DC: LS_countable -> @DC_on _ R.
+    Proof using dec__R a.
+        intros LS total.
         destruct (LS _ _ Model__A a) as [N [[f sur] [h [ele_el__h [n Eqan]]]]].
         specialize (@total_sat ((fun _ => n) >> h) total ) as total'.
         unfold elementary_homomorphism in ele_el__h.
@@ -129,8 +89,7 @@ Section DC.
         assert (forall x, decidable (fun y => R' x y)) as dec__R'.
         intros x y. destruct (dec__R (h x) (h y)); firstorder.
         destruct (@DC_ω _ _ f sur dec__R' P1 n) as [g [case0 Choice]].
-        exists (g >> h); unfold ">>"; split.
-        now rewrite case0.
+        exists (g >> h); unfold ">>". 
         intro n'; now rewrite <- (P2 (g n') (g (S n'))).
     Qed.
 
@@ -228,8 +187,8 @@ Section DC.
 
     Lemma LS_imples_DC_pred: LS_countable_comp -> PDC.
     Proof using definiteness__R.
-        intros LS total a.
-        destruct (LS _ _ Model__A a) as [N [(f & g & bij_l & bij_r) [h [ele_el__h [n Eqan]]]]].
+        intros LS total w.
+        destruct (LS _ _ Model__A w) as [N [(f & g & bij_l & bij_r) [h [ele_el__h [n Eqan]]]]].
         specialize (@total_sat ((fun _ => n) >> h) total ) as total'.
         apply ele_el__h in total'.
         assert (exists R', (forall x: N, (exists y: N, R' x y)) /\ (forall α β, R' α β <-> R (h α) (h β))).
@@ -393,6 +352,20 @@ Section BDP'.
         specialize (emb ((atom tt) (cons _ ($0) 0 (nil _))) (fun n => t)) ; cbn in emb.
         unfold ">>" in emb.
         now rewrite <- emb.
+    Qed.
+
+    Lemma LS_imples_BDP: 
+    LS_term -> BDP.
+    Proof.
+        intros LS A P a.
+        destruct (LS _ _ _ (interp__U P) a) as [i_N [h [emb inb]]].
+        exists (fun n => h (tnth_ n)).
+        specialize (emb (∀ (atom tt) (cons _ ($0) 0 (nil _))) var) as emb'; cbn in emb'.
+        intro H'; apply emb'.
+        intro d.
+        specialize (emb ((atom tt) (cons _ ($0) 0 (nil _))) (fun n => d) ); cbn in emb.
+        rewrite emb; unfold ">>".
+        now destruct (Hterm d) as [x <-].
     Qed.
 
 End BDP'.

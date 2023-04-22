@@ -46,6 +46,7 @@ Notation BDP1 := (@BDP_scheme nat unit).
 Notation BDP'1 := (@BDP'_scheme nat unit).
 
 Notation CAC := (forall A: Type, @BAC_scheme nat A unit).
+Notation AC_form := (forall A: Type, @BAC_scheme form A unit).
 Notation BCAC := (forall A: Type, @BAC_scheme nat A nat).
 Notation AC00 := (@BAC_scheme nat nat unit).
 
@@ -686,6 +687,27 @@ Section Cantor.
     Qed.
 
 End Cantor.
+
+Section EO_choice.
+
+    Definition even n := Σ m, n = 2 * m.
+    Definition odd n := Σ m, n = 2 * m + 1.
+    Definition EO_dec n : even n + odd n.
+    Proof.
+        induction n as [|n [H1|H1]]; [left; exists 0; lia|..].
+        - right; destruct H1 as [k H]; exists k; lia.
+        - left; destruct H1 as [k H]; exists (S k); lia.
+    Defined.
+
+    Lemma EO_false n: 
+        (even n) * (odd n) -> False.
+    Proof.
+        intros ([k Pk] &[t Pt]); lia.
+    Qed.
+
+End EO_choice.
+
+
 
 
 

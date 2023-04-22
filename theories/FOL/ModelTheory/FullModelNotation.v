@@ -94,6 +94,9 @@ Section Elementary.
     Definition elementary_homomorphism {M N: model} (h: M -> N) :=
         forall phi ρ, M ⊨[ρ] phi <-> N ⊨[ρ >> h] phi.
 
+    Definition elementary_syntactic_homomorphism {M: model} (i_term: interp term) (h: term -> M) :=
+        forall phi (ρ: env term), ρ ⊨ phi <-> M ⊨[ρ >> h] phi.
+
 
 
 End Elementary.
@@ -106,3 +109,5 @@ Notation "M ≡ N"  := (elementary_equivalence M N) (at level 30).
 Notation "N ⪳ M"  := (exists h: N -> M, elementary_homomorphism h) (at level 30).
 Notation "N ⪳[ h ] M"  := (@elementary_homomorphism _ _ _ N M h) (at level 30).
 
+Notation "𝕋 ⪳[ h ] M" := (exists i_term, @elementary_syntactic_homomorphism _ _ _ M i_term h) (at level 30).
+Notation "𝕋 ⪳ M" := (exists i_term h, @elementary_syntactic_homomorphism _ _ _ M i_term h) (at level 30).

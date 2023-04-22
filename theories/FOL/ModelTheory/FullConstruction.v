@@ -1,7 +1,10 @@
 Require Import Undecidability.FOL.Completeness.TarskiCompleteness.
+Require Import Lia Peano_dec.
 Require Import Undecidability.FOL.ModelTheory.FullModelNotation.
 Require Import Undecidability.FOL.ModelTheory.SearchNat.
-Require Import Lia Peano_dec.
+Require Import Undecidability.FOL.ModelTheory.FullHenkinModel.
+Require Import Undecidability.FOL.ModelTheory.DCFull.
+
 Local Set Implicit Arguments.
 
 Section Incl_im.
@@ -232,8 +235,167 @@ Section From_BDP_and_DC.
     Variable nth_ : form -> nat.
     Hypothesis Hphi : forall phi,  phi_ (nth_ phi) = phi.
 
+    Theorem CAC: CAC.
+     Proof.
+       intros A R H0.
+       set (R' (p q:nat*A) := fst q = S (fst p) /\ R (fst p) (snd q)).
+       destruct (H0 0) as (y0,Hy0).
+       specialize (DC_with_root DC) as DC'.
+       destruct (@DC' (prod nat A)) with(R:=R') (w:=(0,y0)) as (f,(Hf0,HfS)).
+       - intro x; destruct (H0 (fst x)) as (y,Hy).
+         exists (S (fst x),y).
+         red. auto.
+       - assert (Heq:forall n, fst (f n) = n).
+         + induction n.
+           * rewrite Hf0; reflexivity.
+           * specialize HfS with n; destruct HfS as (->,_); congruence.
+         + exists (fun n _ => snd (f (S n))).
+           intro n'. specialize HfS with n'.
+           destruct HfS as (_,HR).
+           rewrite Heq in HR.
+           exists tt; assumption.
+     Qed.
+
+    Definition AC_form: AC_form.
+    Proof.
+        intros A R total_R.
+        set (R' n := R (phi_ n)).
+        assert (forall x, exists y, R' x y) as total_R'. intro x. 
+        now destruct (total_R (phi_ x)) as [b Pb]; exists b.
+        destruct (CAC total_R') as [f Pf].
+        exists (fun fm => f (nth_ fm)).
+        intro x; specialize (Pf (nth_ x)).
+        unfold R' in Pf.
+        now rewrite (Hphi x) in Pf.
+    Qed.
+    
+    Definition universal_witness:
+        forall ρ, exists (W: nat -> M), forall φ, (forall w, M ⊨[W w.:ρ] φ) -> M ⊨[ρ] ∀ φ.
+    Proof.
+        intros ρ.
+        destruct (@AC_form (nat -> M) (fun phi h => (forall w, M ⊨[(h w) .: ρ] phi) -> M ⊨[ρ] (∀ phi))) as [F PF].
+        - intro φ; destruct (BDP (fun w => (M ⊨[w.:ρ] φ ))) as [w Hw].
+          exact (ρ O). exists w; intro Hx; cbn; now apply Hw.
+        - exists (fun (n: nat) => F (phi_ (π__1 n)) tt (π__2 n)).
+          intro φ; specialize (PF φ).
+          intro H'. destruct PF as [[] PF]; apply PF.
+          intro w.
+          specialize (H' (encode (nth_ φ) w)).
+          rewrite cantor_left, cantor_right in H'.
+          now rewrite (Hphi φ) in H'.
+    Qed.
+
+    Definition existential_witness:
+        forall ρ, exists (W: nat -> M), forall φ, M ⊨[ρ] (∃ φ) -> (exists w, M ⊨[W w.:ρ] φ).
+    Proof.
+        intros ρ.
+        destruct (@AC_form (nat -> M) (fun phi h =>  M ⊨[ρ] (∃ phi) -> (exists w, M ⊨[(h w) .: ρ] phi))) as [F PF].
+        - intro φ; destruct (BDP' (fun w => (M ⊨[w.:ρ] φ ))) as [w Hw].
+          exact (ρ O). exists w; intro Hx; cbn; now apply Hw.
+        - exists (fun (n: nat) => F (phi_ (π__1 n)) tt (π__2 n)).
+          intro φ; specialize (PF φ).
+          intro H'. destruct PF as [[] PF]. 
+          destruct (PF H') as [w Pw].
+          exists (encode (nth_ φ) w).
+          rewrite cantor_left, cantor_right.
+          now rewrite (Hphi φ).
+    Qed.
+
+    Lemma Henkin_witness:
+        forall ρ, exists (W: nat -> M), 
+            (forall φ, (forall w, M ⊨[W w.:ρ] φ) -> M ⊨[ρ] ∀ φ)  
+                /\ 
+            (forall φ, M ⊨[ρ] (∃ φ) -> (exists w, M ⊨[W w.:ρ] φ)).
+    Proof.
+        intros ρ.
+        destruct (universal_witness ρ) as [Uw PUw].
+        destruct (existential_witness ρ) as [Ew PEw].
+        exists (fun n => match EO_dec n with 
+        | inl L => Uw (projT1 L)
+        | inr R => Ew (projT1 R)
+        end ); split.
+        - intros φ Hφ.
+        apply PUw; intro w.
+        specialize (Hφ (2*w)).
+        assert (even (2*w)) by (exists w; lia).
+        destruct (EO_dec (2*w)) eqn: E'.
+        enough (pi1 e = w) as <- by easy.
+        destruct e; cbn; lia.
+        now exfalso; apply (@EO_false (2*w)).
+        - intros φ Hw%PEw.
+        destruct Hw as [w Pw].
+        exists (2*w + 1).
+        assert (odd (2*w + 1)) by (exists w; lia).
+        destruct (EO_dec (2*w + 1)) eqn: E'.
+        now exfalso; apply (@EO_false (2*w + 1)).
+        enough (pi1 o = w) as -> by easy.
+        destruct o; cbn; lia.
+    Qed.
+        
+    Lemma totality_Henkin: 
+        forall ρ, exists ρ_s, ρ ⇒ ρ_s /\ ρ ⊆ ρ_s.
+    Proof.
+        intro ρ.
+        destruct (Henkin_witness ρ) as [W [P1 P2]].
+        exists (fun n => match EO_dec n with 
+        | inl L => ρ (projT1 L)
+        | inr R => W (projT1 R)
+        end ); split; [split|].
+        - specialize (P1 φ) as Pw.
+        intros H' w'.
+        apply Pw; intro w.
+        assert (odd (2 * w + 1)) by (exists w; lia).
+        destruct (EO_dec (2 * w + 1)) eqn: E.
+        now exfalso; apply (@EO_false (2*w + 1)).
+        specialize (H' (2*w + 1)).
+        rewrite E in H'.
+        specialize (projT2 o) as H_; cbn in H_.
+        enough (pi1 o = w) as <- by easy.
+        now enough ( (w + (w + 0)) + 1 = (pi1 o + (pi1 o + 0)) + 1) by lia.
+        - specialize (P2 φ) as Pw.
+        intros H'%Pw.
+        destruct H' as [w Hw].
+        exists (2*w + 1).
+        assert (odd (2 * w + 1)) by (exists w; lia).
+        destruct (EO_dec (2 * w + 1)) eqn: E.
+        now exfalso; apply (@EO_false (2*w + 1)).
+        specialize (projT2 o) as H_; cbn in H_.
+        enough (pi1 o = w) as -> by easy.
+        now enough ( (w + (w + 0)) + 1 = (pi1 o + (pi1 o + 0)) + 1) by lia.
+        - intro x; exists (2*x). destruct (EO_dec (2 * x)) eqn: E.
+        destruct e; cbn; enough (x = x0) as -> by easy; nia.
+        exfalso; eapply (@EO_false (2*x)); split; [now exists x| easy].  
+    Qed.
+
+    Theorem path_ex:
+        exists F: nat -> (env M), forall n, F n ⇒ F (S n) /\ F n ⊆ F (S n).
+    Proof.
+        eapply (@DC (env M) (fun x y => x ⇒ y /\ x ⊆ y)).
+        apply totality_Henkin.
+    Qed.
 
 End From_BDP_and_DC.
 
-
 End AnyModel.
+
+Section Result.
+
+    Context {Σf : funcs_signature} {Σp : preds_signature}.
+    Variable phi_: nat -> form.
+    Variable nth_: form -> nat.
+    Hypothesis Hphi: forall phi, phi_ (nth_ phi) = phi.
+
+    Theorem LS_downward: 
+        BDP -> BDP' -> DC -> forall (M: model), 𝕋 ⪳ M.
+    Proof.
+        intros BDP BDP' DC M.
+        specialize (DC_with_root DC) as DC'.
+        destruct (path_ex BDP BDP' DC Hphi) as [F PF].
+        pose (Fixed_point PF) as Succ.
+        specialize Henkin_env_el with (phi_ := phi_) (h := ι F) as [N PN].
+        { now intro phi; exists (nth_ phi); rewrite Hphi. }
+        split; intros φ; [apply (Succ φ)| apply (Succ φ)].
+        now exists N, (morphism (ι F)).
+    Qed.
+
+End Result.

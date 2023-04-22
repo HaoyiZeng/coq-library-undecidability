@@ -684,7 +684,7 @@ Section Construction.
         assert (total_rel R') as total_R'. intro x. 
         now destruct (total_R (phi_ x)) as [b Pb]; exists b.
         destruct (AC_ω total_R') as [f Pf].
-        exists (fun fm => f (nth_ fm)).
+        exists (fun fm _ => f (nth_ fm)).
         intro x; specialize (Pf (nth_ x)).
         unfold R' in Pf.
         now rewrite (Hphi x) in Pf.
@@ -707,9 +707,9 @@ Section Construction.
         destruct (@AC_form (nat -> M) (fun phi h => (forall w, M ⊨[(h w) .: ρ] phi) -> M ⊨[ρ] (∀ phi))) as [F PF].
         - intro φ; destruct (DP_ω (fun w => (M ⊨[w.:ρ] φ ))) as [w Hw].
           exact (ρ O). exists w; intro Hx; cbn; now apply Hw.
-        - exists (fun n: nat => F (phi_ (π__1 n)) (π__2 n)).
+        - exists (fun (n: nat) => F (phi_ (π__1 n)) tt (π__2 n)).
           intro φ; specialize (PF φ).
-          intro H'. apply PF.
+          intro H'. destruct PF as [[] PF]; apply PF.
           intro w.
           specialize (H' (encode (nth_ φ) w)).
           rewrite cantor_left, cantor_right in H'.
@@ -723,9 +723,10 @@ Section Construction.
         destruct (@AC_form M (fun phi w => M ⊨[w .: ρ] phi -> M ⊨[ρ] (∀ phi))) as [F PF].
         - intro φ; destruct (DP (fun w => (M ⊨[w.:ρ] φ ))) as [w Hw].
           exact (ρ O). exists (w tt); intro Hx; cbn; apply Hw; now intros [].
-        - exists (fun n: nat => F (phi_ n)).
+        - exists (fun n: nat => F (phi_ n) tt).
           intro φ; specialize (PF φ).
-          now exists (nth_ φ); rewrite (Hphi φ).
+          exists (nth_ φ); rewrite (Hphi φ).
+          now destruct PF as [[] PF].
     Qed.
 
     Definition CAC_on A B (R: A -> B -> Prop) :=
