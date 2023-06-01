@@ -3,8 +3,10 @@ Require Export Undecidability.FOL.Syntax.Theories.
 Require Import Undecidability.FOL.Syntax.BinSig.
 Require Import Undecidability.FOL.ModelTheory.SearchNat.
 Require Import Undecidability.FOL.ModelTheory.FullModelNotation.
+Require Import Coq.Logic.EqdepFacts Coq.Logic.FinFun.
 
 
+Locate Vector.t.
 Section joint.
 
 Definition forall_times {Σ_funcs : funcs_signature} 
@@ -33,11 +35,54 @@ Require Import Coq.Vectors.VectorDef.
 
 Section facts_joint.
 
-    Lemma joint_cons {A: Type} {n: nat} (v: vec A n) h rho: v ∗r (h .: rho) = 
-        (append v (cons _ h _ (nil _))) ∗r rho.
+
+Fixpoint vec_snoc {X n} (v: vec X n) (x:X) : vec X (S n) := match v with
+  nil _ => cons _ x _ (nil _)
+| cons _ y _ v => cons _ y _ (vec_snoc v x) end.
+
+Fixpoint vec_rev {X n} (v: vec X n): vec X n
+:= match v with
+    | nil _ => nil _ 
+    | cons _ x _ v => vec_snoc (vec_rev v) x
+    end.
+
+Lemma vec_rev_snoc {X n} (v : vec X n) (x : X) :
+  vec_rev (vec_snoc v x) = cons _ x _ (vec_rev v).
+Proof.
+  induction v in x|-*.
+  - easy.
+  - cbn. rewrite IHv. cbn. reflexivity.
+Qed.
+
+Lemma rev_rev_eq {X n} (v: vec X n):
+    vec_rev (vec_rev v) = v.
+Proof.
+  induction v.
+  - easy.
+  - cbn. rewrite vec_rev_snoc, IHv. easy.
+Qed.
+
+    Lemma joint_cons {A: Type} {n: nat} (v: vec A n) h rho: 
+    v ∗r (h .: rho) =  (append v (cons _ h _ (nil _))) ∗r rho.
     Proof.
         induction v; cbn. { easy. }
         now rewrite IHv.
+    Qed.
+
+    Lemma snoc_joint_rev {A: Type} {n: nat} (v: vec A n) h ρ:
+        vec_snoc v h ∗r ρ = v ∗r (h .: ρ) .
+    Proof.
+        induction v. 
+        - cbn. easy.
+        - cbn. now rewrite IHv.
+    Qed.
+
+    Lemma snoc_joint {A: Type} {n: nat} (v: vec A n) (h: A) ρ:
+        (vec_snoc v h) ∗ ρ = (h .: (v ∗ ρ)).
+    Proof.
+        induction v in ρ |-*; cbn.
+        - easy.
+        - now rewrite IHv.
     Qed.
     
 
@@ -57,39 +102,22 @@ Section facts_joint.
             now specialize (Hp (cons _ d _ v)).
     Qed.
 
-    Definition S_add_1 n:
-        S n = n + 1.
+    Lemma join_join_rev {A n} (v: vec A n) ρ: v ∗ ρ = vec_rev v ∗r ρ .
     Proof.
-        induction n; try apply eq_refl; cbn.
-        rewrite IHn; apply eq_refl.
+        dependent induction v.
+        - cbn. easy.
+        - cbn. rewrite IHv.
+          now rewrite snoc_joint_rev.
     Qed.
 
-    Definition S_add_1' n:
-    n + 1 = S n.
+    Lemma join_rev_join {A n} (v: vec A n) ρ: (vec_rev v) ∗ ρ = v ∗r ρ .
     Proof.
-        induction n; try apply eq_refl; cbn.
-        rewrite IHn; apply eq_refl.
-    Defined.
-
-    Lemma cast_refl X n (v : Vector.t X n) : cast v (Logic.eq_refl) = v. 
-    Proof.
-        induction v; cbn; trivial. now rewrite IHv.
+        dependent induction v.
+        - cbn. easy.
+        - cbn. rewrite <- IHv.
+          rewrite snoc_joint.
+          reflexivity.
     Qed.
-
-    Fixpoint vec_rev {X n} (v: vec X n): vec X n
-    :=
-        match v with
-        | nil _ => nil _ 
-        | cons _ x _ v => cast (append (vec_rev v) (cons _ x _ (nil _))) (S_add_1' _)
-        end.
-
-    Lemma rev_rev_eq {X n} (v: vec X n):
-        vec_rev (vec_rev v) = v.
-    Proof.
-        dependent induction v. {easy. }
-        cbn. 
-    Admitted.
-    
 
     Definition append_joint {X n} h (t: vec X n) ρ:
         append t (cons X h 0 (nil X)) ∗ ρ = (h .: t ∗ ρ).
@@ -98,47 +126,49 @@ Section facts_joint.
         intro ρ. now rewrite IHt.
     Qed.
 
-    Lemma joint_eq_rev_joint' {X n} (v: vec X n) ρ: 
-        (v ∗r ρ) = (vec_rev v) ∗ ρ.
+    Variable A: Type.
+    Lemma lookup_join m n (w : vec _ m) (ρ : nat  -> A) : 
+        (w ∗r ρ) (m + n) = ρ n.
     Proof.
-        induction v; cbn. { reflexivity. }
-        destruct S_add_1'. 
-        rewrite cast_refl, append_joint.
-        rewrite IHv.
-        reflexivity.
+    induction w in ρ,n|-*.
+    - cbn. easy.
+    - cbn. apply IHw.
     Qed.
 
-    Lemma rev_joint_eq_joint {X n} (v: vec X n) ρ: 
-        (vec_rev v ∗r ρ) = v ∗ ρ.
+    Lemma lookup_join_actually X n (v : vec X n) ρ p2 : 
+        (v ∗r ρ) (FinFun.Fin2Restrict.f2n p2) = VectorDef.nth v p2.
     Proof.
-        induction v; cbn. { reflexivity. }
-        destruct S_add_1'.
-        rewrite cast_refl.
-    Admitted.
-
-
-    
-
-    Lemma join_joint'_eq `{ interp} n phi ρ:
-        (forall v : vec _ n, (v ∗ ρ) ⊨ phi) <-> (forall v : vec _ n, (v ∗r ρ) ⊨ phi) .
-    Proof.
-        split.
-        - intros H' v.
-          specialize (H' (vec_rev v)).
-          now rewrite joint_eq_rev_joint'.
-        - intros H' v. 
-          specialize (H' (vec_rev v)).
-          now rewrite <- rev_joint_eq_joint.
+    induction p2 in v,ρ|-*.
+    - cbn. dependent induction v; easy.
+    - unfold FinFun.Fin2Restrict.f2n in *.
+        dependent induction v.
+        cbn. destruct (Fin.to_nat p2) as [p2n Hp2].
+        cbn in *. apply IHp2.
     Qed.
-    
 
-    Lemma forall_joint'  `{interp} n phi ρ:
+    Lemma lookup_join_actually_h {B: Type} n (v : vec A n) ρ p2 (h: A -> B): 
+    ((v ∗r ρ) >> h) (FinFun.Fin2Restrict.f2n p2) = (VectorDef.nth (map h v) p2).
+    Proof.
+    induction p2 in v,ρ|-*.
+    - cbn. dependent induction v; easy.
+    - unfold FinFun.Fin2Restrict.f2n in *.
+        dependent induction v.
+        cbn. destruct (Fin.to_nat p2) as [p2n Hp2].
+        cbn in *. apply IHp2.
+    Qed.
+
+    Lemma forall_joint' `{interp} n phi ρ:
     ρ ⊨ forall_times n phi <-> forall v : vec _ n, (v ∗r ρ) ⊨ phi.
     Proof.
-        rewrite <- join_joint'_eq.
-        apply forall_joint.
+        split; intros.
+        - rewrite <- join_rev_join.
+          now rewrite forall_joint in H0.
+        - rewrite forall_joint.
+          intros v.
+          specialize (H0 (vec_rev v)).
+          now rewrite join_join_rev.
     Qed.
-    
+
 End facts_joint.
 
 
@@ -170,23 +200,6 @@ Section BDP.
         i_atom := fun n (v: vec A (S n)) => R  (tl v) (hd v)
     }.
 
-(*
-
-    Definition add_1_r_red (n : nat) : S n = n + 1.
-    Proof.
-        induction n; [easy | simpl].
-        rewrite IHn. reflexivity.
-    Defined.
-
-
-    Definition var_n_vec (n: nat): vec term n.
-    Proof.
-        induction n.
-        exact (nil _).
-        rewrite add_1_r_red.
-        refine (append (IHn) (cons _ ($ n) _ (nil _))).
-    Defined. *)
-
     Fixpoint var_n' {X} (f: nat -> X) (n m: nat)  :=
         match m with
         | 0 => nil _
@@ -194,62 +207,37 @@ Section BDP.
         end.
     Definition var_n_vec n := var_n' var 0 n.
 
-    Lemma test1 X (w: X) {n: nat} (v: vec X n) ρ:
-        (w .: (v ∗ ρ)) = (append v (cons _ w _ (nil _))) ∗ ρ.
+    Lemma nth_var X m n p2 (f:nat -> X) : 
+        (VectorDef.nth (var_n' f m n) p2) = f (m + FinFun.Fin2Restrict.f2n p2).
     Proof.
-        revert ρ; induction v; cbn.
-        easy. intro ρ.
-        now rewrite (IHv (h .: ρ)).
+    induction p2 in m|-*.
+    - cbn. f_equal. apply plus_n_O.
+    - cbn. unfold FinFun.Fin2Restrict.f2n in *.
+        cbn. destruct (Fin.to_nat p2) as [p2n Hp2]. cbn.
+        specialize (IHp2 (S m)). cbn in *. rewrite plus_n_Sm in IHp2. easy.
     Qed.
-    
-    Lemma test2 X (w: X) {n: nat} (v: vec X n) ρ:
-        v ∗ (w .: ρ) = (cons _ w _ v) ∗ ρ.
+
+    Lemma foo n m (w : vec _ m) v ρ :
+    Vector.map (@eval _ _ A interp__A (w ∗r (v ∗r ρ))) (var_n' var m n) = v.
     Proof.
-        reflexivity.
+    apply VectorSpec.eq_nth_iff. intros p1 p2 ->.
+    erewrite nth_map. 2:reflexivity.
+    rewrite nth_var. cbn.
+    rewrite lookup_join.
+    rewrite lookup_join_actually. easy.
     Qed.
-    
-    Lemma var_n_vec_rec n m (w: vec _ m)  (v: vec _ n) ρ:
-        map (eval A interp__A (w ∗ (v ∗ ρ))) (var_n' var m n) = vec_rev v.
-    Proof.
-        revert m w; induction v. 
-        - cbn. easy.  
-        - cbn. dependent induction v.
-    Admitted.
 
     Lemma var_n_vec_rec' n w v ρ:
-        (Vector.map (eval A interp__A (w .: v ∗r ρ)) (var_n' var 1 n)) = v.
+        (Vector.map (eval A interp__A (w .: v ∗r ρ)) (var_n' var 1 n)) =  v.
     Proof.
-    revert ρ w. dependent induction v.
-    - easy.
-    - cbn. intros ρ w. f_equal. 
-      rewrite <- (IHv ρ w) at 2.
-      destruct n.
-      + easy.
-Admitted.
-    
+        exact (@foo n 1 (cons _ w _ (nil _)) v ρ).
+    Qed.
 
     Instance model__A: model := 
     {
         domain := A;
         interp' := interp__A 
     }.
-
-    Fixpoint Fin n : Type :=
-        match n with
-        | 0 => False
-        | S x => option (Fin x)
-        end.
-
-    Lemma For_M_test ρ:
-        model__A ⊨[ρ] forall_times 2 (∃ (atom _ _ _ _  2 (var_n_vec (S 2)))).
-    Proof.
-        rewrite forall_joint'.
-        intro v. 
-        destruct (total_A v) as [w Jw].
-        exists w.
-        cbn.
-        now do 3 dependent induction v.
-    Qed.
 
     Lemma For_M' n ρ:
         model__A ⊨[ρ] forall_times n (∃ (atom _ _ _ _  n (var_n_vec (S n)))).
@@ -267,6 +255,21 @@ Admitted.
     Variable t_: nat -> term.
     Variable nth_: term -> nat.
     Hypothesis Ht: forall t, t_ (nth_ t) = t.
+
+    Lemma decoding n m (v: vec term n) ρ (h: term -> A):
+        R (Vector.map (eval A interp__A ((m .: v ∗r ρ) >> h)) (var_n' var 1 n)) 
+          (((m .: v ∗r ρ) >> h) 0) 
+        =
+        R (map h v) (h m) .
+    Proof.
+        f_equal.
+        apply VectorSpec.eq_nth_iff. intros p1 p2 ->.
+        erewrite nth_map. 2:reflexivity.
+        rewrite nth_var. cbn.
+        change ((v ∗r ρ >> h) (Fin2Restrict.f2n p2) = nth (map h v) p2).
+        rewrite lookup_join_actually_h. easy.
+    Qed.
+    
 
     Lemma dc_under_LS:
          LS_term-> exists f: nat -> A, forall n (v: vec nat n), exists m, R (map f v) (f m).
@@ -289,7 +292,7 @@ Admitted.
           exists m. now rewrite <- Ph.
           assert (forall {n} m (v: vec _ n) ρ, model__A ⊨[ (m .: v ∗r ρ) >> h] atom n (var_n_vec (S n)) <-> R (map h v) (h m)).
           intros n m v ρ. cbn.
-          admit.
+          now rewrite decoding.
           exists (fun n => h (t_ n)).
           intros n v.
           destruct (H3 (fun _ => $0) n (map t_ v)) as [m Hm].
@@ -297,6 +300,27 @@ Admitted.
           rewrite Ht.
          rewrite H in Hm.
          now rewrite map_map in Hm. 
-    Admitted.
+    Qed.
 
 End BDP.
+
+Section Result.
+
+Variable t_: nat -> term.
+Variable nth_: term -> nat.
+Hypothesis Ht: forall t, t_ (nth_ t) = t.
+
+Definition BDC:=
+    forall (A: Type) (R: forall {n}, vec A n -> A -> Prop), 
+        A -> (forall n (v: vec A n), exists w, R v w) ->
+        (exists f: nat -> A, forall n (v: vec nat n), exists m, R (map f v) (f m)).
+
+Theorem LS_implies_BDC: 
+    LS_term -> BDC.
+Proof.
+    intros ls A R a total_R.
+    now apply (dc_under_LS total_R Ht).
+Qed.
+
+End Result.
+
