@@ -276,6 +276,8 @@ Section LS_imples_BCAC.
         (forall x, exists y, P' x y) ->
             exists f: nat -> (nat -> B), forall n, exists m, P' n (f n m).
 
+
+
     Theorem LS_implies_BCAC: (@BCAC_on A P).
     Proof.
         intros total_R.
@@ -338,7 +340,6 @@ Section LS_imples_AC_κ.
 
     Definition WAC_on Κ B (R: Κ -> B -> Prop) :=
         inhabited B -> (forall n, exists y, R n y) -> exists f : Κ -> B, forall n, exists w, R n (f w).
-
 
     Theorem LS_implies_WAC_κ:
         @WAC_on κ A P.

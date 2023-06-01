@@ -72,6 +72,11 @@ Definition PDC_root_on A (R: A -> A -> Prop) :=
     (forall x, exists y, R x y) -> forall w,
         exists f : nat -> A -> Prop, function_rel' f /\ f 0 w /\ forall n, exists x y, f n x /\ f (S n) y /\ R x y.
 
+Definition BDC:=
+    forall (A: Type) (R: forall {n}, vec A n -> A -> Prop), 
+        A -> (forall n (v: vec A n), exists w, R v w) ->
+        (exists f: nat -> A, forall n (v: vec nat n), exists m, R (map f v) (f m)).
+
 Notation ODC := (forall A R, @ODC_on A R).
 Notation DC := (forall A R, @DC_on A R).
 Notation DC_root := (forall A R, @DC_root_on A R).
@@ -706,6 +711,150 @@ Section EO_choice.
     Qed.
 
 End EO_choice.
+
+Require Import Coq.Lists.List.
+Require Import Coq.Program.Equality.
+
+Section BDC_AC.
+
+Definition BDC_list:=
+    forall (A: Type) (R: list A -> A -> Prop), 
+        (forall (v: list A), exists w, R v w) ->
+        (exists f: nat -> A, forall (v: list nat), exists m, R (map f v) (f m)).
+
+Definition BCAC' := forall B (R: nat -> B -> Prop), (forall x, exists y, R x y) -> exists f: (nat -> B), 
+        forall n, exists w, R n (f w).
+
+Fact any_length_sig n : Σ l: list nat, length l = n.
+Proof.
+    exists ((fix f n := match n with | O => nil | S n => 0 :: (f n) end) n).
+    induction n; try easy; cbn.
+    now rewrite IHn.
+Qed.
+
+Theorem BDC_CAC:
+    BDC_list -> BCAC'.
+Proof.
+    intros BDC_list A R total_R.
+    pose (R' (l: list A) (a: A) := R (length l) (a)).
+    destruct (BDC_list _ R') as [g Hg].
+    - intro v; exact (total_R (length v)).
+    - exists g. intro n.
+      destruct (@any_length_sig n).
+      destruct (Hg x) as [w Hw].
+      exists w.
+      unfold R' in Hw.
+      now rewrite map_length, e in Hw.
+Qed.
+
+Fact to_map_of_eq_map {A B} (v: list A) (g: A -> B) : to_list (Vector.map g (of_list v)) = map g v.
+Proof.
+    rewrite to_list_map.
+    now rewrite to_list_of_list_opp.
+Qed.
+
+Fact length_map_to_list {A B n} (v: vec A n) (g: A -> B): length (map g (to_list v)) = n.
+Proof.
+    rewrite map_length.
+    now rewrite Vectors.vector_to_list_length.
+Qed.
+
+Lemma vec_list_map X Y n (v : Vector.t X n) (g : X -> Y) (H : n = length (map g (to_list v))) :
+  of_list (map g (to_list v)) = cast (Vector.map g v) H.
+Proof.
+  induction v; cbn; trivial. now rewrite <- IHv.
+Qed.
+
+ Print cast.
+
+Lemma cast_refl X n (v : Vector.t X n) :
+  cast v (Logic.eq_refl) = v. 
+Proof.
+  induction v; cbn; trivial. now rewrite IHv.
+Qed.
+
+Lemma vec_list_map' X Y n (P : forall n, Vector.t Y n -> Prop) (v : Vector.t X n) (g : X -> Y) :
+  P (length (map g (to_list v))) (of_list (map g (to_list v))) <-> P n (Vector.map g v).
+Proof.
+  assert (H : n = length (map g (to_list v))).
+  - now rewrite map_length, length_to_list.
+  - unshelve erewrite vec_list_map; try apply H.
+    destruct H. now rewrite cast_refl.
+Qed.
+
+Lemma vec_list_map'' X Y n (P : forall n, Vector.t Y n -> Y -> Prop) (v : Vector.t X n) (g : X -> Y) w :
+  P (length (map g (to_list v))) (of_list (map g (to_list v))) w <-> P n (Vector.map g v) w.
+Proof.
+  assert (H : n = length (map g (to_list v))).
+  - now rewrite map_length, length_to_list.
+  - unshelve erewrite vec_list_map; try apply H.
+    destruct H. now rewrite cast_refl.
+Qed.
+
+Theorem BDC_BDC_list:
+    BDC <-> BDC_list .
+Proof.
+    split.
+    - intros BDC A R totalR.
+      pose (R' n (l: vec A n) (a: A) := R (to_list l) a).
+      destruct (totalR nil) as [a _].
+      destruct (BDC _ R' a) as [g Hg].
+      intros n v; exact (totalR (to_list v)).
+      exists g; intro v. 
+      destruct (Hg _ (of_list v)) as [w Hw]; exists w.
+      unfold R' in Hw.
+      now rewrite <- to_map_of_eq_map.
+    - intros BDC_list A R a totalR.
+      pose (R' (l: list A) (a: A) := R (length l) (of_list l) a).
+      destruct (BDC_list _ R') as [g Hg].
+      intro v; exact (totalR _ (of_list v)).
+      exists g. 
+      intros n v. 
+      destruct (Hg (to_list v)) as [w Hw].
+      unfold R' in Hw.
+      exists w.
+      revert Hw.
+      now rewrite (vec_list_map'' R).
+Qed.
+
+
+Definition LDC :=
+  forall A (R : list A -> list A -> Prop), (forall L, exists L', R L L') -> exists f : nat -> A, forall L, exists L', R (map f L) (map f L').
+
+
+Definition DC_w:=
+  forall A (R : A -> A -> Prop), 
+        A -> (forall x, exists y, R x y) -> 
+            exists f : nat -> A, forall x, exists y, R (f x) (f y).
+
+Lemma LDC_BDC:
+  BDC_list -> DC_w.
+Proof.
+  intros ldc A R a HR.
+  pose (R' := fun l y => match l with | a::_ => R a y | _ => True end).
+  destruct (ldc _ R') as [f Hf].
+  - intros [|x l]; cbn. now exists a. now destruct (HR x) as [w Hw]; exists w.
+  - exists f. intro n. 
+    destruct (Hf (n::nil) ) as [w Hw].
+    now exists w.
+Qed.
+
+Lemma maybe_: DC_w -> LDC.
+Proof.
+    intros ldc A R HR.
+    pose (R' x (y: A) := forall l, In x l -> exists l',  R l l').
+    destruct (HR nil) as [w Hw].
+    destruct (ldc _ R') as [f Hf].
+    - admit.
+    - intros x. unfold R'. exists x. admit.  
+    -unfold R' in Hf. exists f.
+      intro l.  
+Abort.
+
+
+End BDC_AC.
+
+
 
 
 

@@ -226,6 +226,291 @@ Section Recursive_def.
 
 End Recursive_def.
 
+Section BDC.
+
+Definition merge {A: Type} (f1 f2: nat -> A): nat -> A :=
+    fun n => match EO_dec n with 
+        | inl L => f1 (projT1 L)
+        | inr R => f2 (projT1 R)
+    end.
+
+Fact merge_l: forall {A: Type} (f1 f2: nat -> A), (f1 ⊆ merge f1 f2).
+Proof.
+    intros A f1 f2 x; exists (2*x).
+    assert (even (2*x)) by (exists x; lia).
+    unfold merge; destruct (EO_dec (2*x)).
+    enough (pi1 e = x) as -> by easy; destruct e; cbn; lia.
+    exfalso; apply (@EO_false (2*x)); split; easy.
+Qed.
+
+Fact merge_r: forall {A: Type} (f1 f2: nat -> A), (f2 ⊆ merge f1 f2).
+Proof.
+    intros A f1 f2 x; exists (2*x + 1).
+    assert (odd (2*x + 1)) by (exists x; lia).
+    unfold merge; destruct (EO_dec (2*x + 1)).
+    exfalso; apply (@EO_false (2*x + 1)); split; easy.
+    enough (pi1 o = x) as -> by easy; destruct o; cbn; lia.
+Qed.
+
+Fact merge_ex: forall {A: Type} (f1 f2: nat -> A), 
+    forall x, exists y, f1 y = merge f1 f2 x \/ f2 y = merge f1 f2 x.
+Proof.
+    intros A f1 f2 x; unfold merge.
+    destruct (EO_dec x) as [[i Hi]|[i Hi]]; now exists i; (left + right). 
+Qed.
+
+Fixpoint folding {A: Type} {n: nat} (init: nat -> A) (v: vec (nat -> A) n) :=
+    match v with
+    | nil _ => init
+    | cons _ f n v => merge f (folding init v)
+    end.
+
+Fact init_in_folding {A: Type} {n: nat} (init: nat -> A) (v: vec (nat -> A) n) :
+    init ⊆ folding init v.
+Proof.
+    induction v; cbn.
+    - apply refl_sub.
+    - eapply trans_sub.
+      apply IHv.
+      apply merge_r.
+Qed.
+
+Fact folding_incl {A: Type} {n: nat} (init: nat -> A):
+    forall v: vec (nat -> A) n, forall i, In i v -> i ⊆ folding init v.
+Proof.
+    intros; induction H; cbn.
+    + apply merge_l.
+    + eapply trans_sub. exact IHIn. apply merge_r. 
+Qed.
+
+Definition succ_vec (n: nat) (init: env M) (ρ_vec: vec (env M) n) (ρ_s: env M) (φ: form): Prop :=
+    let ρ := folding init ρ_vec in
+    ((forall n: nat, M ⊨[ρ_s n .: ρ] φ) -> M ⊨[ρ] (∀ φ)) 
+        /\ 
+    (M ⊨[ρ] (∃ φ) -> exists m, M ⊨[ρ_s m .: ρ] φ).
+
+    Definition BDC:=
+        forall (A: Type) (R: forall {n}, vec A n -> A -> Prop), 
+            A -> (forall n (v: vec A n), exists w, R v w) ->
+            (exists f: nat -> A, forall n (v: vec nat n), exists m, R (map f v) (f m)).
+
+    Definition BCAC := forall B (R: nat -> B -> Prop), (forall x, exists y, R x y) -> exists f: (nat -> B), 
+        forall n, exists w, R n (f w).
+
+    Hypothesis BDP: BDP.
+    Hypothesis BDP': BDP'.
+    Hypothesis BDC : BDC.
+    Variable phi_ : nat -> form.
+    Variable nth_ : form -> nat.
+    Hypothesis Hphi : forall phi,  phi_ (nth_ phi) = phi.
+
+    Hypothesis BCAC: BCAC.
+
+    Lemma BCAC_term:
+        forall B (R: form -> B -> Prop), (forall x, exists y, R x y) -> exists f: (nat -> B), 
+        forall n, exists w, R n (f w).
+    Proof.
+        intros B R totalR.
+        destruct (@BCAC B (fun n => R (phi_ n))) as [g Pg].
+        intro x. apply (totalR (phi_ x)).
+        exists g. intro n. 
+        specialize (Pg (nth_ n)).
+        now rewrite Hphi in Pg.
+    Qed.
+
+    Definition universal_witness:
+        forall ρ, exists (W: nat -> M), forall φ, (forall w, M ⊨[W w.:ρ] φ) -> M ⊨[ρ] ∀ φ.
+    Proof.
+        intros ρ.
+        destruct (@BCAC_term (nat -> M) (fun phi h => (forall w, M ⊨[(h w) .: ρ] phi) -> M ⊨[ρ] (∀ phi))) as [F PF].
+        - intro φ; destruct (BDP (fun w => (M ⊨[w.:ρ] φ ))) as [w Hw].
+          exact (ρ (nth_ φ)). exists w; intro Hx; cbn; now apply Hw.
+        - exists (fun (n: nat) => F (π__1 n) (π__2 n)).
+          intro φ; specialize (PF φ).
+          intro H'. destruct PF as [[] PF]; apply PF.
+          intro w.
+          specialize (H' (encode 0 w)).
+          now rewrite cantor_left, cantor_right in H'.
+          intro w. specialize (H' (encode (S n) w)).
+          now rewrite cantor_left, cantor_right in H'.
+    Qed.
+
+    Definition existential_witness:
+        forall ρ, exists (W: nat -> M), forall φ, M ⊨[ρ] (∃ φ) -> (exists w, M ⊨[W w.:ρ] φ).
+    Proof.
+        intros ρ.
+        destruct (@BCAC_term (nat -> M) (fun phi h =>  M ⊨[ρ] (∃ phi) -> (exists w, M ⊨[(h w) .: ρ] phi))) as [F PF].
+        - intro φ; destruct (BDP' (fun w => (M ⊨[w.:ρ] φ ))) as [w Hw].
+          exact (ρ O). exists w; intro Hx; cbn; now apply Hw.
+        - exists (fun (n: nat) => F (π__1 n) (π__2 n)).
+          intro φ; specialize (PF φ).
+          intro H'. destruct PF as [[] PF]. 
+          destruct (PF H') as [w Pw].
+          exists (encode 0 w).
+          now rewrite cantor_left, cantor_right.
+          destruct (PF H') as [w Pw].
+          exists (encode (S n) w).
+          now rewrite cantor_left, cantor_right.
+    Qed.
+
+    Lemma Henkin_witness:
+        forall ρ, exists (W: nat -> M), 
+            (forall φ, (forall w, M ⊨[W w.:ρ] φ) -> M ⊨[ρ] ∀ φ)  
+                /\ 
+            (forall φ, M ⊨[ρ] (∃ φ) -> (exists w, M ⊨[W w.:ρ] φ)).
+    Proof.
+        intros ρ.
+        destruct (universal_witness ρ) as [Uw PUw].
+        destruct (existential_witness ρ) as [Ew PEw].
+        exists (merge Uw Ew); split; intros φ Hφ.
+        - apply PUw; intro w.
+          destruct (merge_l Uw Ew w) as [key ->].
+          apply (Hφ key). 
+        - destruct (PEw _ Hφ) as [w Pw].
+          destruct (merge_r Uw Ew w) as [key Hk].
+          exists key. now rewrite <- Hk.
+    Qed.
+
+    Definition Henkin_succ {n} (init: env M) (v: vec (env M) n) ρ :=
+        (forall φ, succ_vec init v ρ φ) /\ init ⊆ ρ /\ forall ρ', In ρ' v -> ρ' ⊆ ρ.
+
+Lemma totality_Henkin_vec: forall {n: nat} (init: env M) (ρ_vec: vec _ n), exists ρ_s, Henkin_succ init ρ_vec ρ_s.
+Proof.
+    intros.
+        pose (ρ := folding init ρ_vec).
+        destruct (Henkin_witness ρ) as [W [P1 P2]].
+        exists (merge ρ W); split; [split|split].
+        - specialize (P1 φ) as Pw.
+        intros H' w'.
+        apply Pw; intro w.
+        now destruct (merge_r ρ W w) as [key ->].
+        - specialize (P2 φ) as Pw.
+        intros H'%Pw.
+        destruct H' as [w Hw].
+        destruct (merge_r ρ W w) as [key Hk].
+        exists key. now rewrite <- Hk.
+        - eapply trans_sub.
+          apply (init_in_folding init ρ_vec).
+          apply merge_l.
+        - intros i Ini.
+          assert (i ⊆ ρ) as H1 by now eapply folding_incl.
+          assert (ρ ⊆ merge ρ W) as H2 by apply merge_l.
+          eapply (trans_sub H1 H2).
+Qed.
+
+Lemma countable_domain init:
+    exists f: nat -> (nat -> M),
+        forall n (v: vec nat n), exists k, Henkin_succ init (map f v) (f k).
+Proof.
+    destruct (@BDC (env M) (fun n v s => Henkin_succ init v s) init) as [f Hf].
+    intros n v; destruct (totality_Henkin_vec init v) as [w Hw].
+    exists w; apply Hw.
+    exists f; exact Hf.
+Qed.
+
+End BDC.
+
+Section new_Recursive_def.
+
+    Variable init: nat -> M.
+    Variable F: nat -> nat -> M.
+    Hypothesis domain: forall n (v: vec nat n), exists k, Henkin_succ init (map F v) (F k).
+
+    Opaque encode_p. 
+
+    Definition ι' x := F (π__1 x) (π__2 x).
+
+    Lemma ι'_incl n: F n ⊆ ι'.
+    Proof.
+        intro x; exists (encode n x); cbn.
+        unfold ι'.
+        now rewrite cantor_left, cantor_right.
+    Qed.
+
+    Lemma trans_succ a b c:
+        (a ⇒ b /\ a ⊆ b) -> (b ⇒ c /\ b ⊆ c) -> (a ⇒ c /\ a ⊆ c).
+    Proof.
+        intros [H1 S1] [H2 S2]; split; [intro φ| ].
+        destruct (H1 φ) as [H11 H12], (H2 φ) as [H21 H22];
+        split; intro H.
+        - apply H11. intro n. destruct (S2 n) as [w ->]. apply H.
+        - destruct (H12 H) as [w Hw].
+          destruct (S2 w) as [w' Hw'].
+          exists w'. rewrite <- Hw'.
+          easy.
+        - eapply (trans_sub S1 S2).
+    Qed.
+    
+    Lemma ι'_succ n: F n ⇒ ι'.
+    Proof.
+        intro φ.
+        destruct (find_bounded φ) as [y Hy].
+        unshelve eapply bounded_sub_impl_henkin_env.
+        exact (merge (F n) init).
+        exact y.
+        destruct (@domain 1 (cons _ n 0 (nil _))) as [k [Pk _]].
+        intro phi; destruct (Pk phi) as [H1 H2].
+        split; intro H.
+        - apply H1. intro x; destruct (ι'_incl k x) as [w ->]; apply H.
+        - destruct (H2 H) as [w Hw]. destruct (ι'_incl k w) as [w' Hw'].
+          exists w'. now rewrite <- Hw'.
+        - trivial.
+        - intros x' _.
+          apply merge_l.
+    Qed.    
+
+    Fixpoint n_vec n :=
+        match n with
+        | O => nil _
+        | S n => cons _ n n (n_vec n)
+        end.
+
+    Lemma In_by_map {A B: Type} {n} (f: A -> B) a (v: vec A n):
+        In a v -> In (f a) (map f v).
+    Proof.
+        induction 1; cbn; now constructor.
+    Qed.
+
+    Lemma In_n_vec n:
+        forall a, a < n -> In a (n_vec n).
+    Proof.
+        induction n; cbn.
+        - lia.
+        - intros x Hx. 
+        assert (x = n \/ x < n) as [->| H1] by lia.
+            + constructor.
+            + constructor. now apply IHn. 
+    Qed.
+    
+    Lemma new_bounded_sub b: 
+        exists E: nat, ι' ⊆[b] (F E).
+    Proof.
+        destruct (bounded_cantor b) as [E PE].
+        destruct(@domain E (n_vec E)) as [K [_ Hk]].
+        exists K; intros x H.
+        unfold ι.
+        specialize (PE _ H).
+        unfold ι'.
+        enough (In (F (π__1 x)) (map F (n_vec E))) as H1.
+        apply Hk in H1.
+        exact (H1 (π__2 x)).
+        apply In_by_map.
+        apply In_n_vec.
+        easy.
+    Qed.
+
+    Theorem new_Fixed_point: ι' ⇒ ι'.
+    Proof.
+        intros.
+        destruct (find_bounded φ) as [b bφ].
+        destruct (new_bounded_sub b) as [E P].
+        unshelve eapply bounded_sub_impl_henkin_env; [exact (F E) |exact b|..]; try easy.
+        apply (ι'_succ E).
+    Qed.
+
+End new_Recursive_def.
+
+
 Section From_BDP_and_DC.
 
     Hypothesis BDP: BDP.
@@ -235,7 +520,7 @@ Section From_BDP_and_DC.
     Variable nth_ : form -> nat.
     Hypothesis Hphi : forall phi,  phi_ (nth_ phi) = phi.
 
-    Theorem CAC: CAC.
+    Theorem BCAC_: BCAC.
      Proof.
        intros A R H0.
        set (R' (p q:nat*A) := fst q = S (fst p) /\ R (fst p) (snd q)).
@@ -249,14 +534,14 @@ Section From_BDP_and_DC.
          + induction n.
            * rewrite Hf0; reflexivity.
            * specialize HfS with n; destruct HfS as (->,_); congruence.
-         + exists (fun n _ => snd (f (S n))).
+         + exists (fun n => snd (f (S n))).
            intro n'. specialize HfS with n'.
            destruct HfS as (_,HR).
            rewrite Heq in HR.
-           exists tt; assumption.
+           exists n'; assumption.
      Qed.
 
-    Definition AC_form: AC_form.
+    (* Definition AC_form: BAC_form.
     Proof.
         intros A R total_R.
         set (R' n := R (phi_ n)).
@@ -267,104 +552,24 @@ Section From_BDP_and_DC.
         intro x; specialize (Pf (nth_ x)).
         unfold R' in Pf.
         now rewrite (Hphi x) in Pf.
-    Qed.
-    
-    Definition universal_witness:
-        forall ρ, exists (W: nat -> M), forall φ, (forall w, M ⊨[W w.:ρ] φ) -> M ⊨[ρ] ∀ φ.
-    Proof.
-        intros ρ.
-        destruct (@AC_form (nat -> M) (fun phi h => (forall w, M ⊨[(h w) .: ρ] phi) -> M ⊨[ρ] (∀ phi))) as [F PF].
-        - intro φ; destruct (BDP (fun w => (M ⊨[w.:ρ] φ ))) as [w Hw].
-          exact (ρ O). exists w; intro Hx; cbn; now apply Hw.
-        - exists (fun (n: nat) => F (phi_ (π__1 n)) tt (π__2 n)).
-          intro φ; specialize (PF φ).
-          intro H'. destruct PF as [[] PF]; apply PF.
-          intro w.
-          specialize (H' (encode (nth_ φ) w)).
-          rewrite cantor_left, cantor_right in H'.
-          now rewrite (Hphi φ) in H'.
-    Qed.
+    Qed. *)
 
-    Definition existential_witness:
-        forall ρ, exists (W: nat -> M), forall φ, M ⊨[ρ] (∃ φ) -> (exists w, M ⊨[W w.:ρ] φ).
-    Proof.
-        intros ρ.
-        destruct (@AC_form (nat -> M) (fun phi h =>  M ⊨[ρ] (∃ phi) -> (exists w, M ⊨[(h w) .: ρ] phi))) as [F PF].
-        - intro φ; destruct (BDP' (fun w => (M ⊨[w.:ρ] φ ))) as [w Hw].
-          exact (ρ O). exists w; intro Hx; cbn; now apply Hw.
-        - exists (fun (n: nat) => F (phi_ (π__1 n)) tt (π__2 n)).
-          intro φ; specialize (PF φ).
-          intro H'. destruct PF as [[] PF]. 
-          destruct (PF H') as [w Pw].
-          exists (encode (nth_ φ) w).
-          rewrite cantor_left, cantor_right.
-          now rewrite (Hphi φ).
-    Qed.
-
-    Lemma Henkin_witness:
-        forall ρ, exists (W: nat -> M), 
-            (forall φ, (forall w, M ⊨[W w.:ρ] φ) -> M ⊨[ρ] ∀ φ)  
-                /\ 
-            (forall φ, M ⊨[ρ] (∃ φ) -> (exists w, M ⊨[W w.:ρ] φ)).
-    Proof.
-        intros ρ.
-        destruct (universal_witness ρ) as [Uw PUw].
-        destruct (existential_witness ρ) as [Ew PEw].
-        exists (fun n => match EO_dec n with 
-        | inl L => Uw (projT1 L)
-        | inr R => Ew (projT1 R)
-        end ); split.
-        - intros φ Hφ.
-        apply PUw; intro w.
-        specialize (Hφ (2*w)).
-        assert (even (2*w)) by (exists w; lia).
-        destruct (EO_dec (2*w)) eqn: E'.
-        enough (pi1 e = w) as <- by easy.
-        destruct e; cbn; lia.
-        now exfalso; apply (@EO_false (2*w)).
-        - intros φ Hw%PEw.
-        destruct Hw as [w Pw].
-        exists (2*w + 1).
-        assert (odd (2*w + 1)) by (exists w; lia).
-        destruct (EO_dec (2*w + 1)) eqn: E'.
-        now exfalso; apply (@EO_false (2*w + 1)).
-        enough (pi1 o = w) as -> by easy.
-        destruct o; cbn; lia.
-    Qed.
-        
     Lemma totality_Henkin: 
         forall ρ, exists ρ_s, ρ ⇒ ρ_s /\ ρ ⊆ ρ_s.
     Proof.
         intro ρ.
-        destruct (Henkin_witness ρ) as [W [P1 P2]].
-        exists (fun n => match EO_dec n with 
-        | inl L => ρ (projT1 L)
-        | inr R => W (projT1 R)
-        end ); split; [split|].
+        destruct (Henkin_witness BDP BDP' Hphi BCAC_ ρ) as [W [P1 P2]].
+        exists (merge ρ W); split; [split|].
         - specialize (P1 φ) as Pw.
         intros H' w'.
         apply Pw; intro w.
-        assert (odd (2 * w + 1)) by (exists w; lia).
-        destruct (EO_dec (2 * w + 1)) eqn: E.
-        now exfalso; apply (@EO_false (2*w + 1)).
-        specialize (H' (2*w + 1)).
-        rewrite E in H'.
-        specialize (projT2 o) as H_; cbn in H_.
-        enough (pi1 o = w) as <- by easy.
-        now enough ( (w + (w + 0)) + 1 = (pi1 o + (pi1 o + 0)) + 1) by lia.
+        now destruct (merge_r ρ W w) as [key ->].
         - specialize (P2 φ) as Pw.
         intros H'%Pw.
         destruct H' as [w Hw].
-        exists (2*w + 1).
-        assert (odd (2 * w + 1)) by (exists w; lia).
-        destruct (EO_dec (2 * w + 1)) eqn: E.
-        now exfalso; apply (@EO_false (2*w + 1)).
-        specialize (projT2 o) as H_; cbn in H_.
-        enough (pi1 o = w) as -> by easy.
-        now enough ( (w + (w + 0)) + 1 = (pi1 o + (pi1 o + 0)) + 1) by lia.
-        - intro x; exists (2*x). destruct (EO_dec (2 * x)) eqn: E.
-        destruct e; cbn; enough (x = x0) as -> by easy; nia.
-        exfalso; eapply (@EO_false (2*x)); split; [now exists x| easy].  
+        destruct (merge_r ρ W w) as [key Hk].
+        exists key. now rewrite <- Hk.
+        - apply merge_l.
     Qed.
 
     Theorem path_ex:
@@ -385,7 +590,7 @@ Section Result.
     Variable nth_: form -> nat.
     Hypothesis Hphi: forall phi, phi_ (nth_ phi) = phi.
 
-    Theorem LS_downward: 
+    Theorem LS_downward:
         BDP -> BDP' -> DC -> forall (M: model), 𝕋 ⪳ M.
     Proof.
         intros BDP BDP' DC M.
@@ -398,5 +603,30 @@ Section Result.
         now exists N, (morphism (ι F)).
     Qed.
 
-
 End Result.
+
+Section Result2.
+
+    Context {Σf : funcs_signature} {Σp : preds_signature}.
+    Variable phi_: nat -> form.
+    Variable nth_: form -> nat.
+    Hypothesis Hphi: forall phi, phi_ (nth_ phi) = phi.
+
+    Theorem new_LS_downward:
+        BDP -> BDP' -> BDC -> forall (M: model), M -> 𝕋 ⪳ M.
+    Proof.
+        intros BDP BDP' BDC M m.
+        rewrite BDC_BDC_list in BDC.
+        specialize (BDC_CAC BDC) as BCAC.
+        rewrite <- BDC_BDC_list in BDC.
+        destruct (countable_domain BDP BDP' BDC Hphi BCAC (fun _=>m)) as [F PF].
+        pose (new_Fixed_point PF) as Succ.
+        specialize Henkin_env_el with (phi_ := phi_) (h := ι F) as [N PN].
+        { now intro phi; exists (nth_ phi); rewrite Hphi. }
+        split; intros φ; [apply (Succ φ)| apply (Succ φ)].
+        now exists N, (morphism (ι F)).
+    Qed.
+
+End Result2.
+
+
