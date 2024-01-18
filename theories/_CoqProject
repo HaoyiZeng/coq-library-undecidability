@@ -950,3 +950,4 @@ FOL/ModelTheory/FullModelNotation.v
 FOL/ModelTheory/FullHenkinModel.v
 FOL/ModelTheory/FullConstruction.v
 FOL/ModelTheory/BDC.v
+FOL/ModelTheory/HenkinEnv.v

@@ -265,19 +265,13 @@ Section FixedModel.
 
         Lemma fixpoint_succ n: F n ⇒ fixpont_env.
         Proof.
-            intro φ.
-            destruct (find_bounded φ) as [y Hy].
-            unshelve eapply bounded_sub_impl_henkin_env.
-            exact (F n).
-            exact y. destruct (@domain [n]) as [k [Pk _]].
+            destruct (@domain [n]) as [k [Pk _]].
             firstorder.
             intro phi; destruct (Pk phi) as [H1 H2].
             split; intro H.
             - apply H1. intro x; destruct (fixpont_env_incl k x) as [w ->]; apply H.
             - destruct (H2 H) as [w Hw]. destruct (fixpont_env_incl k w) as [w' Hw'].
             exists w'. now rewrite <- Hw'.
-            - trivial.
-            - intros x' _. now exists x'.
         Qed.    
 
         Fixpoint n_lsit n :=
@@ -317,6 +311,7 @@ Section FixedModel.
             intros.
             destruct (find_bounded φ) as [b bφ].
             destruct (new_bounded b) as [E P].
+            
             unshelve eapply bounded_sub_impl_henkin_env; [exact (F E) |exact b|..]; try easy.
             apply (fixpoint_succ E).
         Qed.
@@ -356,11 +351,8 @@ Section FixedModel.
             exact (ρ (nth_ φ)). exists w; intro Hx; cbn; now apply Hw.
             - exists (fun (n: nat) => F (π__1 n) (π__2 n)).
             intro φ; specialize (PF φ).
-            intro H'. destruct PF as [[] PF]; apply PF.
-            intro w.
-            specialize (H' (encode 0 w)).
-            now rewrite cantor_left, cantor_right in H'.
-            intro w. specialize (H' (encode (S n) w)).
+            intro H'. destruct PF as [n PF]; apply PF.
+            intro w. specialize (H' (encode n w)).
             now rewrite cantor_left, cantor_right in H'.
         Qed.
 
@@ -374,12 +366,9 @@ Section FixedModel.
             exact (ρ O). exists w; intro Hx; cbn; now apply Hw.
             - exists (fun (n: nat) => F (π__1 n) (π__2 n)).
             intro φ; specialize (PF φ).
-            intro H'. destruct PF as [[] PF]. 
+            intro H'. destruct PF as [n PF]. 
             destruct (PF H') as [w Pw].
-            exists (encode 0 w).
-            now rewrite cantor_left, cantor_right.
-            destruct (PF H') as [w Pw].
-            exists (encode (S n) w).
+            exists (encode n w).
             now rewrite cantor_left, cantor_right.
         Qed.
 
