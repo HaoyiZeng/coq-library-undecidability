@@ -19,7 +19,7 @@ So we have the following pictorial representation:
 
 *)
 
-Require Import Undecidability.FOL.ModelTheory.Core.
+Require Import Undecidability.FOL.ModelTheory.FragmentCore.
 Require Import Coq.Program.Equality.
 Local Set Implicit Arguments.
 
@@ -314,7 +314,6 @@ Section iso_impl_el_emb.
      + now rewrite IHphi, <- cons_comp_sat.
  Qed.
 
-
 End iso_impl_el_emb.
 
 Section trans_elem.
@@ -325,8 +324,6 @@ Section trans_elem.
     intros [h P] [g P']; exists (h>>g).
     intros phi ρ; now rewrite (P phi ρ), (P' phi).
   Qed.
-  
 
-  
 End trans_elem.
 

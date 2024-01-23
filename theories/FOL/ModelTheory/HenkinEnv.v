@@ -1,25 +1,8 @@
-Require Import Undecidability.FOL.Completeness.TarskiCompleteness.
-Require Import Undecidability.FOL.ModelTheory.FullModelNotation.
-Require Import Undecidability.FOL.ModelTheory.SearchNat.
-Require Import Undecidability.FOL.ModelTheory.FullHenkinModel.
-Require Import Undecidability.FOL.ModelTheory.DCFull.
-Require Import Lia Peano_dec.
-
-Definition directed {X} (R: X -> X -> Prop) :=
-    forall x y, exists z, R x z /\ R y z.
-Definition total {X Y} (R: X -> Y -> Prop) := forall x, exists y, R x y.
-Notation "R ∘ g" := (fun x y => R (g x) (g y)) (at level 30).
-
-Definition DDC := forall X (R: X -> X -> Prop),
-    X -> directed R -> exists f: nat -> X, directed (R ∘ f).
-Definition BCC := forall X (R: nat -> X -> Prop),
-    X -> total R -> exists f: nat -> X, forall n, exists w, R n (f w).
-Definition BDP := forall X (P: X -> Prop),
-    X -> exists f: nat -> X,
-        (forall n, P (f n)) -> (forall x, P x).
-Definition BEP := forall X (P: X -> Prop),
-    X -> exists f: nat -> X,
-        (exists x, P x) -> (exists n, P (f n)).
+Require Import Undecidability.FOL.ModelTheory.Core.
+Require Import Undecidability.FOL.ModelTheory.LogicalPrinciples.
+Require Import Undecidability.FOL.ModelTheory.DCPre.
+Require Import Undecidability.FOL.ModelTheory.ConstructiveLS.
+Require Import Arith Lia PeanoNat Peano_dec.
 
 Section Incl_im.
     Variables A B C: Type.
@@ -27,8 +10,8 @@ Section Incl_im.
     Definition im_sub_k (ρ: nat -> C) (ρ': B -> C)  k := forall x, x < k -> exists y, ρ x = ρ' y.
 End Incl_im.
 
-Notation "ρ ⊆ ρ'" := (im_sub ρ ρ') (at level 25).
-Notation "ρ ⊆[ k ] ρ'" := (im_sub_k ρ ρ' k) (at level 25).
+Notation "ρ ⊂ ρ'" := (im_sub ρ ρ') (at level 25).
+Notation "ρ ⊂[ k ] ρ'" := (im_sub_k ρ ρ' k) (at level 25).
 
 Section Incl_facts.
 
@@ -45,15 +28,15 @@ Section Incl_facts.
         lia || now assert (x = b) as -> by lia; lia.
     Qed.
 
-    Lemma refl_sub {A B} (e: A -> B): e ⊆ e.
+    Lemma refl_sub {A B} (e: A -> B): e ⊂ e.
     Proof.
         intros x.
         now exists x.
     Qed.
 
-    Lemma trans_sub  {A B} (a b c: A -> B): a ⊆ b -> b ⊆ c -> a ⊆ c.
+    Lemma trans_sub  {A B} (a b c: A -> B): a ⊂ b -> b ⊂ c -> a ⊂ c.
     Proof.
-        unfold "⊆"; intros.
+        unfold "⊂"; intros.
         destruct (H x) as [ny H'], (H0 ny) as [my H''].
         exists my; congruence.
     Qed.
@@ -65,14 +48,23 @@ Section FixedModel.
 
     (* Definition of Henkin condition *)
     Section Henkin_condition.
-        Definition succ (ρ: env M) (ρ_s: env M) (φ: form): Prop :=
+        Definition blurred_succ (ρ: env M) (ρ_s: env M) (φ: form): Prop :=
             ((forall n: nat, M ⊨[ρ_s n .: ρ] φ) -> M ⊨[ρ] (∀ φ)) 
                 /\ 
             (M ⊨[ρ] (∃ φ) -> exists m, M ⊨[ρ_s m .: ρ] φ).
+
+        Definition succ (ρ ρ_s: env M) φ := 
+            (exists w, M ⊨[ρ_s w .: ρ] φ -> M ⊨[ρ] (∀ φ))
+                /\
+            (exists w, M ⊨[ρ] (∃ φ) -> M ⊨[ρ_s w .: ρ] φ).
+ 
     End Henkin_condition.
 
-    Notation "ρ ⇒ ρ_s" := (forall φ, succ ρ ρ_s φ) (at level 25).
-    Notation "ρ ⇒[ phi ] ρ_s" := (succ ρ ρ_s phi) (at level 25).
+    Notation "ρ ⇒ ρ_s" := (forall φ, blurred_succ ρ ρ_s φ) (at level 25).
+    Notation "ρ ⇒[ phi ] ρ_s" := (blurred_succ ρ ρ_s phi) (at level 25).
+
+    Notation "ρ ⇒' ρ_s" := (forall φ, succ ρ ρ_s φ) (at level 25).
+    Notation "ρ ⇒'[ phi ] ρ_s" := (succ ρ ρ_s phi) (at level 25).
 
     (* Some technical lemmas about bounded *)
     Section TechnicalLemmas.
@@ -97,7 +89,7 @@ Section FixedModel.
         Qed.
 
         Lemma im_bounded_sub (ρ ρ': env M) b:
-            ρ ⊆[b] ρ' -> exists (ξ : nat -> nat), forall x, x < b -> (ρ x) = (ρ' (ξ x)).
+            ρ ⊂[b] ρ' -> exists (ξ : nat -> nat), forall x, x < b -> (ρ x) = (ρ' (ξ x)).
         Proof.
             induction b; cbn; [intros |].
             - exists (fun _ => O); lia.
@@ -109,7 +101,7 @@ Section FixedModel.
             eapply Pξ; lia.  
         Qed.
 
-        Lemma im_bounded_sub_form ρ ρ' φ k: bounded k φ -> ρ ⊆[k] ρ' -> 
+        Lemma im_bounded_sub_form ρ ρ' φ k: bounded k φ -> ρ ⊂[k] ρ' -> 
             exists σ, (M ⊨[ρ] φ <-> M ⊨[ρ'] φ[σ]) /\ (forall x, x < k -> (σ >> (eval M interp' ρ')) x = ρ x).
         Proof.
             intros H H'.
@@ -122,7 +114,7 @@ Section FixedModel.
         Qed.
 
         Lemma bounded_sub_impl_henkin_env ρ ρ' ρ_s: 
-            ρ' ⇒ ρ_s -> forall φ k, bounded k φ -> ρ ⊆[k] ρ' -> ρ ⇒[φ] ρ_s.
+            ρ' ⇒ ρ_s -> forall φ k, bounded k φ -> ρ ⊂[k] ρ' -> ρ ⇒[φ] ρ_s.
         Proof.
             intros Rρ' φ k H Ink.
             assert (bounded k (∀ φ)) as HS.
@@ -144,14 +136,49 @@ Section FixedModel.
             now rewrite (comp_cons ρ ρ' σ' (ρ_s w)). lia.
         Qed.
 
-        Lemma incl_impl_wit_env ρ ρ' ρ_s: 
-            ρ' ⇒ ρ_s -> ρ ⊆ ρ' -> ρ ⇒ ρ_s.
-        Proof.
-            intros H IN φ.
-            destruct (find_bounded φ) as [k Hk].
-            apply (@bounded_sub_impl_henkin_env ρ ρ' ρ_s H φ k Hk).
-            intros x _; apply IN.
-        Qed.
+        Lemma bounded_sub_impl_henkin_env' ρ ρ' ρ_s: 
+        ρ' ⇒' ρ_s -> (forall φ k, bounded k φ -> ρ ⊂[k] ρ' -> ρ ⇒'[φ] ρ_s).
+    Proof.
+        intros Rρ' φ k H Ink.
+        assert (bounded k (∀ φ)) as HS.
+        apply bounded_S_quant.
+        apply (bounded_up H); lia.
+        destruct (im_bounded_sub_form HS Ink ) as (σ & fH & EH).
+        destruct (Rρ' (φ[up σ])) as [[ws P] [ws1 P1]]. split.
+        - exists ws. intro Hp; rewrite fH. 
+          apply P; revert Hp.
+          rewrite sat_comp.
+          apply (bound_ext _ H); 
+          intros n Ln. destruct n; cbn; [easy|]. rewrite <- EH.
+          now rewrite (comp_cons ρ ρ' σ (ρ_s ws)). lia.
+        - assert (bounded k (∃ φ)) as HS'. apply bounded_S_quant, (bounded_up H); lia.
+          destruct (im_bounded_sub_form HS' Ink ) as (σ' & fH' & EH').
+          specialize (Rρ' (φ[up σ'])) as [_ [v Pv]].
+          exists v. rewrite fH'; intro Hp.
+          apply Pv in Hp.  
+          revert Hp; rewrite sat_comp.
+          apply (bound_ext _ H). intros x HL.
+          induction x; cbn. easy. rewrite <- EH'.
+          now rewrite (comp_cons ρ ρ' σ' (ρ_s v)). lia.
+    Qed.  
+
+    Lemma incl_impl_wit_env ρ ρ' ρ_s: 
+        ρ' ⇒ ρ_s -> ρ ⊂ ρ' -> ρ ⇒ ρ_s.
+    Proof.
+        intros H IN φ.
+        destruct (find_bounded φ) as [k Hk].
+        apply (@bounded_sub_impl_henkin_env ρ ρ' ρ_s H φ k Hk).
+        intros x _; apply IN.
+    Qed.
+
+    Lemma incl_impl_wit_env' ρ ρ' ρ_s:
+        ρ' ⇒' ρ_s -> ρ ⊂ ρ' -> ρ ⇒' ρ_s.
+    Proof.
+        intros H IN φ.
+        destruct (find_bounded φ) as [k Hk].
+        apply (@bounded_sub_impl_henkin_env' ρ ρ' ρ_s H φ k Hk).
+        intros x _; apply IN.
+    Qed.
 
     End TechnicalLemmas.
 
@@ -184,7 +211,7 @@ Section FixedModel.
             f_equal. destruct o. cbn; lia.
         Qed.
         
-        Fact merge_l: forall {A: Type} (f1 f2: nat -> A), (f1 ⊆ merge f1 f2).
+        Fact merge_l: forall {A: Type} (f1 f2: nat -> A), (f1 ⊂ merge f1 f2).
         Proof.
             intros A f1 f2 x; exists (2*x).
             assert (even (2*x)) by (exists x; lia).
@@ -193,7 +220,7 @@ Section FixedModel.
             exfalso; apply (@EO_false (2*x)); split; easy.
         Qed.
         
-        Fact merge_r: forall {A: Type} (f1 f2: nat -> A), (f2 ⊆ merge f1 f2).
+        Fact merge_r: forall {A: Type} (f1 f2: nat -> A), (f2 ⊂ merge f1 f2).
         Proof.
             intros A f1 f2 x; exists (2*x + 1).
             assert (odd (2*x + 1)) by (exists x; lia).
@@ -211,8 +238,11 @@ Section FixedModel.
 
     End Merge.
 
-    Definition henkin_next A B := A ⇒ B /\ A ⊆ B.
-    Notation "A '~>' B" := (henkin_next A B) (at level 60).
+    Definition blurred_henkin_next A B := A ⇒ B /\ A ⊂ B.
+    Definition henkin_next A B := A ⇒' B /\ A ⊂ B.
+
+    Notation "A '~>' B" := (blurred_henkin_next A B) (at level 60).
+    Notation "A '~>'' B" := (henkin_next A B) (at level 60).
 
     Section Next_env.
         Lemma trans_succ a b c:
@@ -229,9 +259,151 @@ Section FixedModel.
         Qed.
 
     End Next_env.
+        (* This section shows that countable directed F implies a fixpoint of ~> *)
+    Section total_fixpoint'.
+
+        Variable Path: nat -> env M.
+        Hypothesis HP: forall n, Path n ~>' Path (S n).
+
+        Opaque encode_p.
+
+        Lemma mono_Path1 a b: Path a ⊆ Path (a + b) .
+        Proof.
+            induction b.
+            - assert (a + 0 = a) as -> by lia; apply refl_sub.
+            - assert (a + S b = S(a + b)) as -> by lia.
+                eapply trans_sub. exact IHb. apply HP.
+        Qed.
+
+        Lemma mono_Path2 a b: a < b -> Path a ⊂ Path b.
+        Proof.
+            assert (a < b -> Σ c, a + c = b) .
+            intro H; exists (b - a); lia.
+            intro aLb.
+            destruct (H aLb) as [c Pc].
+            specialize (mono_Path1 a c).
+            now rewrite Pc. 
+        Qed.
+
+        Definition ι': env M := fun x => Path (π__1 x) (π__2 x).
+
+        Lemma ι_incl' n: Path n ⊂ ι'.
+        Proof.
+            intro x; exists (encode n x); cbn.
+            unfold ι'. now rewrite cantor_left, cantor_right.
+        Qed.
+
+        Lemma ι_succ' n: Path n ⇒' ι'.
+        Proof.
+            intros; destruct (HP n) as [P _];
+            destruct (P φ) as [[w1 H1] [w2 H2]];
+            specialize (ι_incl' (S n)) as Pws.
+            split.
+            - destruct (Pws w1) as [w Hw].
+              exists w; intros; apply H1. 
+              now rewrite Hw.
+            - destruct (Pws w2) as [w Hw].
+              exists w. now rewrite <- Hw; intros H%H2.
+        Qed.    
+
+        Lemma bounded_sub' b: 
+            exists E: nat, ι' ⊂[b] (Path E).
+        Proof.
+            destruct (bounded_cantor b) as [E PE].
+            exists E; intros x H.
+            unfold ι'.
+            specialize (PE _ H).
+            specialize (mono_Path2  PE) as H1.
+            destruct (H1 (π__2 x)) as [w Hw].
+            now exists w.
+        Qed.
+
+        Theorem ι_Fixed_point': ι' ⇒' ι'.
+        Proof.
+            intros.
+            destruct (find_bounded φ) as [b bφ].
+            destruct (bounded_sub' b) as [E P].
+            unshelve eapply bounded_sub_impl_henkin_env'; [exact (Path E) |exact b|..]; try easy.
+            apply ι_succ'.
+        Qed.
+
+    Opaque encode_p. 
+
+    End total_fixpoint'.
+
+    Section total_fixpoint.
+
+        Variable Path: nat -> env M.
+        Hypothesis HP: forall n, Path n ~> Path (S n).
+
+        Opaque encode_p.
+
+        Lemma mono_Path' a b: Path a ⊆ Path (a + b) .
+        Proof.
+            induction b.
+            - assert (a + 0 = a) as -> by lia; apply refl_sub.
+            - assert (a + S b = S(a + b)) as -> by lia.
+                eapply trans_sub. exact IHb. apply HP.
+        Qed.
+
+        Lemma mono_Path a b: a < b -> Path a ⊂ Path b.
+        Proof.
+            assert (a < b -> Σ c, a + c = b) .
+            intro H; exists (b - a); lia.
+            intro aLb.
+            destruct (H aLb) as [c Pc].
+            specialize (mono_Path' a c).
+            now rewrite Pc. 
+        Qed.
+
+        Definition ι: env M := fun x => Path (π__1 x) (π__2 x).
+
+        Lemma ι_incl n: Path n ⊂ ι.
+        Proof.
+            intro x; exists (encode n x); cbn.
+            unfold ι. now rewrite cantor_left, cantor_right.
+        Qed.
+
+        Lemma ι_succ n: Path n ⇒ ι.
+        Proof.
+            split; intros; destruct (HP n) as [P _];
+            destruct (P φ) as [H1 H2];
+            specialize (ι_incl (S n)) as Pws.
+            - apply H1.
+              intro n'; destruct (Pws n') as [w ->]. 
+              apply H.
+            - destruct (H2 H) as [w Hw].
+              destruct (Pws w) as [x ->] in Hw.
+              now exists x.
+        Qed.    
+
+        Lemma bounded_sub b: 
+            exists E: nat, ι ⊂[b] (Path E).
+        Proof.
+            destruct (bounded_cantor b) as [E PE].
+            exists E; intros x H.
+            unfold ι.
+            specialize (PE _ H).
+            specialize (mono_Path  PE) as H1.
+            destruct (H1 (π__2 x)) as [w Hw].
+            now exists w.
+        Qed.
+
+        Theorem ι_Fixed_point: ι ⇒ ι.
+        Proof.
+            intros.
+            destruct (find_bounded φ) as [b bφ].
+            destruct (bounded_sub b) as [E P].
+            unshelve eapply bounded_sub_impl_henkin_env; [exact (Path E) |exact b|..]; try easy.
+            apply (ι_succ E).
+        Qed.
+
+    Opaque encode_p. 
+
+    End total_fixpoint.
 
     (* This section shows that countable directed F implies a fixpoint of ~> *)
-    Section direcred_fixpoint.
+    Section directed_fixpoint.
 
         Variable F: nat -> env M.
         Hypothesis F_hypo: forall x y, exists k,  F x ~> F k /\ F y ~> F k.
@@ -251,26 +423,24 @@ Section FixedModel.
 
         Opaque encode_p.
 
-        Definition fixpont_env: env M := fun x => F (π__1 x) (π__2 x).
+        Definition γ: env M := fun x => F (π__1 x) (π__2 x).
 
-        Require Import List.
-        Import ListNotations.
+        Import List ListNotations.
 
-        Lemma fixpont_env_incl n: F n ⊆ fixpont_env.
+        Lemma γ_env_incl n: F n ⊂ γ.
         Proof.
             intro x; exists (encode n x); cbn.
-            unfold fixpont_env.
-            now rewrite cantor_left, cantor_right.
+            unfold γ. now rewrite cantor_left, cantor_right.
         Qed.
 
-        Lemma fixpoint_succ n: F n ⇒ fixpont_env.
+        Lemma γ_succ n: F n ⇒ γ.
         Proof.
             destruct (@domain [n]) as [k [Pk _]].
             firstorder.
             intro phi; destruct (Pk phi) as [H1 H2].
             split; intro H.
-            - apply H1. intro x; destruct (fixpont_env_incl k x) as [w ->]; apply H.
-            - destruct (H2 H) as [w Hw]. destruct (fixpont_env_incl k w) as [w' Hw'].
+            - apply H1. intro x; destruct (γ_env_incl k x) as [w ->]; apply H.
+            - destruct (H2 H) as [w Hw]. destruct (γ_env_incl k w) as [w' Hw'].
             exists w'. now rewrite <- Hw'.
         Qed.    
 
@@ -293,12 +463,11 @@ Section FixedModel.
         Qed.
 
         Lemma new_bounded b: 
-            exists E: nat, fixpont_env ⊆[b] (F E).
+            exists E: nat, γ ⊂[b] (F E).
         Proof.
             destruct (bounded_cantor b) as [E PE].
             destruct(@domain (n_lsit E)) as [K HK].
-            exists K; intros x H.
-            unfold fixpont_env.
+            exists K; intros x H. unfold γ.
             specialize (PE _ H).
             enough (In (π__1 x) (n_lsit E)) as H1.
             destruct (HK (π__1 x) H1) as [_ H3].
@@ -306,22 +475,96 @@ Section FixedModel.
             now apply In_n_list.
         Qed.
 
-        Theorem fixpoint_env_Fixed_point: fixpont_env ⇒ fixpont_env.
+        Theorem γ_Fixed_point: γ ⇒ γ.
         Proof.
             intros.
             destruct (find_bounded φ) as [b bφ].
             destruct (new_bounded b) as [E P].
-            
             unshelve eapply bounded_sub_impl_henkin_env; [exact (F E) |exact b|..]; try easy.
-            apply (fixpoint_succ E).
+            apply (γ_succ E).
         Qed.
 
         Opaque encode_p. 
 
-    End direcred_fixpoint.
+    End directed_fixpoint.
 
     (* This sectiob shows that ~> is directed *)
-    Section Next_env_directed.
+    Section dp_Next_env_total.
+
+        Hypothesis dp: DP.
+        Hypothesis ep: EP.
+        Hypothesis cc : CC.
+        Variable phi_ : nat -> form.
+        Variable nth_ : form -> nat.
+        Hypothesis Hphi : forall phi,  phi_ (nth_ phi) = phi.
+
+        Lemma CC_term: forall B (R: form -> B -> Prop), 
+            B -> (forall x, exists y, R x y) -> 
+                exists f: (form -> B),  forall n, R n (f n).
+        Proof.
+            intros B R b totalR.
+            destruct (@cc B (fun n => R (phi_ n))) as [g Pg]. exact b.
+            intro x. apply (totalR (phi_ x)).
+            unshelve eexists. intros f; exact (g (nth_ f)). 
+            intro n. cbn. specialize (Pg (nth_ n)).
+            rewrite Hphi in Pg. eauto. 
+        Qed.
+
+        Definition dp_universal_witness:
+            forall ρ, exists (W: nat -> M), forall φ, exists w, M ⊨[W w.:ρ] φ -> M ⊨[ρ] ∀ φ.
+        Proof.
+            intros.
+            destruct (@CC_term M (fun phi w => M ⊨[w .: ρ] phi -> M ⊨[ρ] (∀ phi)) nonempty) as [F PF].
+            - intro φ; destruct (dp (fun w => (M ⊨[w.:ρ] φ ))) as [w Hw].
+              exact (ρ O). exists (w tt); intro Hx; cbn; apply Hw; now intros [].
+            - exists (fun n: nat => F (phi_ n)).
+              intro φ; specialize (PF φ).
+              exists (nth_ φ); rewrite (Hphi φ). easy.
+        Qed.
+
+        Definition ep_existential_witness:
+            forall ρ, exists (W: nat -> M), forall φ, exists w, M ⊨[ρ] (∃ φ) -> M ⊨[W w.:ρ] φ.
+        Proof.
+            intros.
+            destruct (@CC_term M (fun phi w => M ⊨[ρ] (∃ phi) -> M ⊨[w .: ρ] phi) nonempty) as [F PF].
+            - intro φ; destruct (ep (fun w => (M ⊨[w.:ρ] φ )) nonempty) as [w Hw].
+              exists (w tt). intros Hx%Hw. now destruct Hx as [[] Hx].
+            - exists (fun n: nat => F (phi_ n)).
+              intro φ; specialize (PF φ).
+              exists (nth_ φ); rewrite (Hphi φ). easy.
+        Qed.
+
+        Lemma dp_Henkin_witness:
+            forall ρ, exists (W: nat -> M), ρ ⇒' W.
+        Proof.
+            intros ρ.
+            destruct (dp_universal_witness ρ) as [Uw PUw].
+            destruct (ep_existential_witness ρ) as [Ew PEw].
+            exists (merge Uw Ew); intros φ; split.
+            - destruct (PUw φ) as [w Pw].
+              exists (to_merge_l w); intro H'; apply Pw.
+              now  rewrite merge_even in H'.
+            - destruct (PEw φ) as [w Pw].
+              exists (to_merge_r w); intros H'.
+              rewrite merge_odd. eauto.
+        Qed.
+
+        Lemma dp_Next_env:
+            forall ρ, exists ρ', ρ ~>' ρ'.
+        Proof.
+            intros ρ.
+            destruct (dp_Henkin_witness ρ) as [W' HW].
+            exists (merge W' ρ); split.
+            - intros φ; destruct (HW φ) as [[w1 H1] [w2 H2]]; split.
+            exists (to_merge_l w1). rewrite merge_even. eauto.
+            exists (to_merge_l w2). rewrite merge_even. eauto.
+            - apply merge_r.
+        Qed.
+
+    End dp_Next_env_total.
+
+        (* This sectiob shows that ~> is directed *)
+    Section bdp_Next_env_total.
         Hypothesis bdp: BDP.
         Hypothesis bep: BEP.
         Hypothesis bcc : BCC.
@@ -334,7 +577,7 @@ Section FixedModel.
                 exists f: (nat -> B),  forall n, exists w, R n (f w).
         Proof.
             intros B R b totalR.
-            destruct (@bcc B (fun n => R (phi_ n)) b) as [g Pg].
+            destruct (@bcc B (fun n => R (phi_ n))) as [g Pg]. exact b.
             intro x. apply (totalR (phi_ x)).
             exists g. intro n. 
             specialize (Pg (nth_ n)).
@@ -387,8 +630,7 @@ Section FixedModel.
             exists key. now rewrite <- Hk.
         Qed.
 
-        Lemma Next_env:
-            forall ρ, exists (W: nat -> M), ρ ~> W.
+        Lemma Next_env: forall ρ, exists ρ', (ρ ~> ρ').
         Proof.
             intros ρ.
             destruct (Henkin_witness ρ) as [W' HW].
@@ -400,12 +642,22 @@ Section FixedModel.
             exists (2 * w). now rewrite merge_even.
             - apply merge_r.
         Qed.
+    End bdp_Next_env_total.
+
+    (* This sectiob shows that ~> is directed *)
+    Section Next_env_directed.
+        Hypothesis bdp: BDP.
+        Hypothesis bep: BEP.
+        Hypothesis bcc : BCC.
+        Variable phi_ : nat -> form.
+        Variable nth_ : form -> nat.
+        Hypothesis Hphi : forall phi,  phi_ (nth_ phi) = phi.
 
         Definition directed_Henkin_env: forall ρ1 ρ2, exists ρ, (ρ1 ~> ρ) /\ (ρ2 ~> ρ).
         Proof.
             intros ρ1 ρ2.
             pose (σ := merge ρ1 ρ2).
-            destruct (Next_env σ) as [ρ [H1 H2]].
+            destruct (Next_env bdp bep bcc Hphi σ) as [ρ [H1 H2]].
             exists ρ; split; split.
             + eapply incl_impl_wit_env. exact H1. apply merge_l.
             + eapply trans_sub. apply merge_l. apply H2.
@@ -423,24 +675,67 @@ Section Result.
     Variable nth_: form -> nat.
     Hypothesis Hphi: forall phi, phi_ (nth_ phi) = phi.
 
-    Definition LS_on (M: model) := 
-        exists (N: interp term) (h: term -> M), 
-            forall phi (ρ: env term), ρ ⊨ phi <-> M ⊨[ρ >> h] phi.
+    Theorem LS_downward_with_DC_LEM: 
+        LEM -> DC -> LS.
+    Proof.
+        intros LEM DC M m.
+        destruct (DC _ (@henkin_next _ _ M)) as [F PF]; eauto.
+        { exact (fun n => m). }
+        { intros A. unshelve eapply dp_Next_env; eauto.
+          now rewrite DP_iff_LEM.
+          now rewrite EP_iff_LEM.
+          apply DC_impl_CC. now apply DC_impl_DC_root.
+        }
+        specialize (ι_Fixed_point' PF) as Succ.
+        specialize Henkin_LS with (phi_ := phi_) as [N [h Ph]].
+        { now intro phi; exists (nth_ phi); rewrite Hphi. }
+        exists (ι F). 
+        split; intros φ; [apply (Succ φ)| apply (Succ φ)].
+        exists N, h. eapply Ph.
+    Qed.
 
-    Definition LS := forall M: model, M -> LS_on M.
+    Theorem LS_downward_with_BDP_BEP_DC:
+        BDP -> BEP -> DC -> LS.
+    Proof.
+        intros BDP BEP DC M m.
+        assert (BCC: BCC). eapply BDC_impl_BCC.
+        now apply DC_impl_BDC.
+        destruct (DC _ (@blurred_henkin_next _ _ M)) as [F PF]; eauto.
+        { exact (fun n => m). }
+        { intros A. unshelve eapply Next_env; eauto. }
+        pose (ι_Fixed_point PF) as Succ.
+        specialize Blurred_Henkin_LS with (phi_ := phi_) as [N [h Ph]].
+        { now intro phi; exists (nth_ phi); rewrite Hphi. }
+        exists (ι F). 
+        split; intros φ; [apply (Succ φ)| apply (Succ φ)].
+        exists N, h. eapply Ph.
+    Qed.
 
     Theorem LS_downward:
         BDP -> BEP -> DDC -> BCC -> LS.
     Proof.
         intros BDP BEP DDC BCC M m.
-        destruct (DDC _ (henkin_next)) as [F PF].
+        destruct (DDC _ (@blurred_henkin_next _ _ M)) as [F PF]; eauto.
         { exact (fun n => m). }
+        { intros x y z Hx Hy. apply (trans_succ Hx Hy). }
         { intros A B. unshelve eapply directed_Henkin_env; eauto. }
-        pose (fixpoint_env_Fixed_point PF) as Succ.
-        specialize Henkin_env_el with (phi_ := phi_)  (h := fixpont_env F) as [N PN].
+        pose (γ_Fixed_point PF) as Succ.
+        specialize Blurred_Henkin_LS with (phi_ := phi_) as [N [h Ph]].
         { now intro phi; exists (nth_ phi); rewrite Hphi. }
+        exists (γ F). 
         split; intros φ; [apply (Succ φ)| apply (Succ φ)].
-        now exists N, (morphism (fixpont_env F)).
+        exists N, h. eapply Ph.
+    Qed.
+
+    Theorem LS_downward': 
+        OBDC -> LS.
+    Proof.
+        intros H. assert BDC2 as H'.
+        {intro A; eapply OBDC_impl_BDC2_on; eauto. }
+        rewrite BDC2_iff_DDC_BCC in H'. destruct H'.
+        eapply LS_downward; eauto.
+        - intro A. eapply (@OBDC_impl_BDP_on A); eauto.
+        - intro A. eapply (@OBDC_impl_BEP_on A); eauto.
     Qed.
 
 End Result.

@@ -1,6 +1,6 @@
 From Undecidability Require Import Synthetic.EnumerabilityFacts Synthetic.ListEnumerabilityFacts Shared.ListAutomation.
 Require Import Undecidability.FOL.Completeness.TarskiCompleteness.
-Require Import Undecidability.FOL.ModelTheory.Core.
+Require Import Undecidability.FOL.ModelTheory.FragmentCore.
 Local Set Implicit Arguments.
 
 
@@ -50,7 +50,7 @@ Section TermIsCountable.
 Section HenkinModel.
     (* Consider a nonempty classical model *)
     Variable M: model.
-    Hypothesis classical_model: classical interp'.
+    Hypothesis classical_model: classical (interp' M).
     Hypothesis noempty: M.
 
     Definition input_theory: theory := theory_of_model M.
@@ -58,12 +58,11 @@ Section HenkinModel.
     Definition output_theory: theory := 
         Out_T (construct_construction (input_bot (closed_theory_of_model M))).
 
-    Instance term_model M: model := 
-    {
+    Definition term_model M: model := 
+    {|
         domain := term;
         interp' := model_bot (closed_theory_of_model M)
-    }.
-
+    |}.
 
     Lemma Hcon_in_M: consistent class input_theory.
     Proof.
@@ -88,6 +87,7 @@ Section HenkinModel.
 
     Lemma classical_model': forall p φ, (M ⊨[p] ((¬ ¬ φ) → φ)).
     Proof.
+        intros; cbn.
         intros; cbn; intros.
         apply classical_model with ⊥.
         intro; exfalso.
@@ -121,7 +121,7 @@ Section HenkinModel.
         model which is elementary equivalence to M, whenever the signature is 
         at most countable. 
     *)
-    Theorem LS_downward_weaker: 
+    Lemma countable_model: 
         exists N: model, a_coutable_model N /\ M ≡ N.
     Proof.
         exists (term_model M).
@@ -138,7 +138,6 @@ Section HenkinModel.
     Qed.
 
 End HenkinModel.
-
 
 (* 
     In this section, a stronger version of the Löwenheim–Skolem theorem downward part
@@ -161,10 +160,10 @@ Section TermModel.
     Definition theory_under h: theory :=
         fun phi => M ⊨[h] phi.
     
-    Instance interp_term: interp term :=
+    Definition interp_term: interp term :=
         {| i_func := func; i_atom := fun P v => atom P v ∈ theory_under h|}.
-    Instance N: model :=
-        { domain := term; interp' := interp_term }.
+    Definition N: model :=
+        {| domain := term; interp' := interp_term |}.
 
     Lemma eval_eval (ρ: env term) (t: term):
         (t ₜ[N] ρ) ₜ[M] h =
@@ -185,7 +184,7 @@ Section TermModel.
     Lemma eval_var t: t ₜ[N] var = t.
     Proof.
         induction t; cbn. easy.
-        assert (map (eval _ _ var) v = map (fun x => x) v).
+        assert (map (eval term interp_term var) v = map (fun x => x) v).
         apply map_ext_in, IH.
         now rewrite H, map_id.
     Qed.
@@ -213,14 +212,14 @@ Section TermModel.
 
     Section TarskiVaughtTest.
 
-    Definition full_witness_condition :=
+    Definition Henkin_env :=
         forall phi, exists w: nat, M ⊨[h w.:h] phi -> M ⊨[h] ∀ phi.
 
-    Definition full_witness_condition_ω :=
+    Definition Henkin_env_blurred :=
         forall phi, (forall n, M ⊨[h n .: h] phi) -> M ⊨[h] ∀ phi. 
 
-    Theorem Tarski_Vaught_Test: 
-        full_witness_condition -> exists (N: model), a_coutable_model N /\ N ⪳ M.
+    Lemma Henkin_elementary_submodel: 
+        Henkin_env -> exists (N: model), a_coutable_model N /\ N ⪳ M.
     Proof.
         intro fix_h. exists N. split. {apply term_model_countable. }
         exists morphism. intros φ. induction φ using form_ind_subst; intro; try easy.
@@ -245,8 +244,8 @@ Section TermModel.
             now induction x.
     Qed.
 
-    Theorem Tarski_Vaught_Test_ω: 
-        full_witness_condition_ω -> exists (N: model), a_coutable_model N /\ N ⪳ M.
+    Lemma Henkin_blurred_elementary_submodel: 
+        Henkin_env_blurred -> exists (N: model), a_coutable_model N /\ N ⪳ M.
     Proof.
         intro fix_h. exists N. split. {apply term_model_countable. }
         exists morphism. intros φ. induction φ using form_ind_subst; intro; try easy.
@@ -275,8 +274,8 @@ Section TermModel.
 
     Section help_verion.
 
-    Theorem Tarski_Vaught_Test': 
-        full_witness_condition -> exists (N: model), N ⪳ M.
+    Lemma Henkin_elementary_submodel': 
+        Henkin_env -> exists (N: model), N ⪳ M.
     Proof.
         intro fix_h. exists N. 
         exists morphism. intros φ. induction φ using form_ind_subst; intro; try easy.
@@ -301,8 +300,8 @@ Section TermModel.
             now induction x.
     Qed.
 
-    Theorem Tarski_Vaught_Test_ω': 
-        full_witness_condition_ω -> exists (N: model), N ⪳ M.
+    Lemma Henkin_blurred_elementary_submodel': 
+        Henkin_env_blurred -> exists (N: model), N ⪳ M.
     Proof.
         intro fix_h. exists N.
         exists morphism. intros φ. induction φ using form_ind_subst; intro; try easy.
@@ -332,8 +331,8 @@ Section TermModel.
     Hypothesis root_in_h:
         forall x, exists y, root x = h y.
 
-    Theorem Tarski_Vaught_Test_with_root: 
-        full_witness_condition -> exists (N: model) (mor: N -> M), N ⪳[mor] M /\ forall i, exists n, root i = mor n.
+    Lemma Henkin_elementary_submodel_with_root: 
+        Henkin_env -> exists (N: model) (mor: N -> M), N ⪳[mor] M /\ forall i, exists n, root i = mor n.
     Proof.
         intro fix_h. exists N. 
         exists morphism; split. intros φ. induction φ using form_ind_subst; intro; try easy.
@@ -369,11 +368,11 @@ Section TermModel.
 
     (* which satify the witness property *)
 
-    Definition witness_prop_ := 
+    Definition witness_prop (M: model) := 
          forall phi, exists w, M ⊨[_] ((phi [w..]) → ∀ phi) /\ closed_term w. 
 
-    Theorem LS_downward_under_witness: 
-        witness_prop_ -> exists (N: model) (mor: N -> M),
+    Lemma elementary_syntatic_model: 
+        witness_prop M -> exists (N: model) (mor: N -> M),
             a_coutable_model N /\ N ⪳[mor] M /\ forall i, exists n, h i = mor n.
     Proof.
         intro witness_prop_.
@@ -400,21 +399,48 @@ Section TermModel.
 
 End TermModel.
 
+
+(* Result of Henkin Model *)
+
+Section WitnessPropertyLS.
+
     (* Consider a countable signature, and a function enumerate all formulas *)
+
     Variable phi_ : nat -> form.
     Hypothesis Hphi : forall phi, exists n, phi_ n = phi.
 
-    Corollary LS_countable (M: model): 
-    forall m: M, witness_prop_ M ->
-        exists (N: model), a_coutable_model N /\ (exists h: N -> M, N ⪳[h] M /\ exists n: N, h n = m).
+    Theorem witness_property_LS: 
+        forall M: model, witness_prop M -> inhabited M ->
+            exists N: model, a_coutable_model N /\ N ⪳ M.
     Proof.
-        intros m wit.
-        destruct (@LS_downward_under_witness M (fun _ => m) phi_ Hphi wit) as (N & h & C__N & P & index).
-        exists N; split. {easy. }
-        exists h; split. {easy. }
+        intros M H [m].
+        destruct (elementary_syntatic_model (fun _ => m) Hphi H) as (N & h & HN1 & HN2 &_).
+        exists N; eauto.
+    Qed.
+
+    Corollary witness_property_LS_with_root: 
+        forall M: model, witness_prop M  -> 
+            forall m: M, exists (N: model), a_coutable_model N /\ 
+                (exists h: N -> M, N ⪳[h] M /\ exists n: N, h n = m).
+    Proof.
+        intros M wit m.
+        destruct (@elementary_syntatic_model M (fun _ => m) phi_ Hphi wit) as (N & h & C__N & P & index).
+        exists N; split; eauto.
+        exists h; split; eauto.
         destruct (index O) as [x R].
         now exists x. 
     Qed.
+
+    End WitnessPropertyLS.
+
+    Section CompletenessLS.
+
+    Theorem completeness_LS: 
+        forall M: model, (classical (interp' M)) -> inhabited M -> 
+            exists N : model, a_coutable_model N /\ M ≡ N.
+    Proof. intros M H []; apply countable_model; eauto. Qed.
+
+    End CompletenessLS.
 
 End TermIsCountable.
 
