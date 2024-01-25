@@ -5,6 +5,14 @@ Require Import Undecidability.FOL.ModelTheory.DCPre.
 
 Section DC.
 
+    Fact Σ_countable: countable_sig.
+    Proof.
+        repeat split.
+        - exists (fun _ => None). intros [].
+        - exists (fun _ => Some  tt). intros []. exists 42; eauto.
+        - intros []. - intros [] []; firstorder.
+    Qed.
+
     Variable A: Type.
     Variable a: A.
     Variable R: A -> A -> Prop.
@@ -60,33 +68,29 @@ Section DC.
 
     Definition dec_R := forall x y, dec (R x y).
 
-    Definition DC_on' {X} (R: X -> X -> Prop) :=
-        X -> total R ->
-            exists f: nat -> X, forall n, R (f n) (f (S n)).
-
-    Lemma LS_impl_DC: LS_root -> dec_R -> DC_on' R.
+    Lemma LS_impl_DC: LöwenheimSkolemTheorem -> dec_R -> DC_on' R.
     Proof using a.
         intros LS DecR _ total.
-        destruct (LS Model__A a) as [N [[f sur] [h [ele_el__h [n Eqan]]]]].
-        specialize (@total_sat ((fun _ => n) >> h) total ) as total'.
-        unfold elementary_homomorphism in ele_el__h.
-        apply ele_el__h in total'.
-        assert (exists R', (forall x: N, (exists y: N, R' x y)) /\ (forall α β, R' α β <-> R (h α) (h β))).
+        destruct (LS sig_empty sig_binary Σ_countable Model__A a) as [N [[h Hh] [f HN]]].
+        specialize (@total_sat ((fun _ => (h 42)) >> f) total ) as total'.
+        (* unfold elementary_homomorphism in ele_el__h. *)
+        apply HN in total'.
+        assert (exists R', (forall x: N, (exists y: N, R' x y)) /\ (forall α β, R' α β <-> R (f  α) (f β))).
         exists (fun x y => tt ₚ[ N] cons N x 1 (cons N y 0 (nil N))).
         split. intro x. now specialize(total' x).
         intros α β; rewrite forfor_sat.
-        now unfold elementary_homomorphism in ele_el__h; rewrite <- ele_el__h.
+        now unfold elementary_homomorphism in HN; rewrite <- HN.
         destruct H as [R' [P1 P2]].
         assert (forall x y, dec (R' x y)) as dec__R'.
-        { intros x y. destruct (DecR (h x) (h y)); firstorder. }
-        destruct (@DC_ω _ _ f sur dec__R' P1 n) as [g [case0 Choice]].
-        exists (g >> h); unfold ">>". 
+        { intros x y. destruct (DecR (f x) (f y)); firstorder. }
+        destruct (@DC_ω _ _ h Hh dec__R' P1 (h 42)) as [g [case0 Choice]].
+        exists (g >> f); unfold ">>". 
         intro n'; now rewrite <- (P2 (g n') (g (S n'))).
     Qed.
 
     End dec__R_full.
 
-    Section DC_pred_full.
+    (* Section DC_pred_full.
 
     Definition PDC₀_root_on B (R: B -> B -> Prop) :=
         total R -> forall w, exists F : nat -> nat -> B, 
@@ -150,9 +154,20 @@ Section DC.
             split. now exists y. now rewrite <- P2.
     Qed.
 
-    End DC_pred_full.
+    End DC_pred_full. *)
 
 End DC.
+
+Section DCRes.
+
+    Theorem LS_impl_DC_delta: LöwenheimSkolemTheorem -> DC__Δ .
+    Proof.
+        intros H X R dec_R x tot_R.
+        apply LS_impl_DC; eauto.
+    Qed.
+    
+End DCRes.
+
 
 
 

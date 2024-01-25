@@ -1,5 +1,7 @@
 Require Export Undecidability.FOL.FullSyntax.
 Require Export Undecidability.FOL.Syntax.Theories.
+Require Import Undecidability.FOL.ModelTheory.DCPre.
+Require Import Undecidability.Synthetic.ListEnumerabilityFacts.
 Require Export Vector.
 
 Local Set Implicit Arguments.
@@ -92,12 +94,56 @@ Notation "M ≡ N"  := (elementary_equivalence M N) (at level 30).
 Notation "N ⪳[ h ] M"  := (@elementary_homomorphism _ _ _ N M h) (at level 30).
 Notation "N ⪳ M"  := (exists h: N -> M, N ⪳[ h ] M) (at level 30).
 
+
+Section Countable_Sig.
+
+    Context {Σf : funcs_signature} {Σp : preds_signature}.
+
+    Definition countable_sig `{Σf: funcs_signature} `{Σp: preds_signature}: Type :=
+        EnumerabilityFacts.enumerable__T Σf * EnumerabilityFacts.enumerable__T Σp *
+        (forall x y : Σf, Dec.dec (x = y)) * (forall x y : Σp, Dec.dec (x = y)).
+    
+    Lemma enum_form: countable_sig -> exists (phi_: nat -> form) nth_, forall phi, phi_ (nth_ phi) = phi.
+    Proof.
+        intros [[[h1 h2] h3] h4].
+        edestruct enumT_form' as [nth Hnth]; eauto.
+        apply enumT_full_logic_sym. apply enumT_full_logic_quant.
+        pose (nth_ := fun n => match nth n with | Some f => f | None => ⊥ end).
+        unfold EnumerabilityFacts.enumerator__T' in Hnth.
+        assert (forall x : form, exists n : nat, nth_ n = x) as P.
+        { intro x. destruct (Hnth x) as [w Hw]. exists w. unfold nth_. now rewrite Hw. }
+        assert (forall n x: form, {n = x} + {~ n = x}) as decForm.
+        { apply dec_form; eauto. apply  dec_full_logic_sym. apply dec_full_logic_quant.  }
+        assert (forall f, decider (fun n : nat => nth_ n = f) ) as decP.
+        { intros x y. destruct (decForm x (nth_ y)); [now left | right; eauto]. } 
+        specialize (fun f => (@W (fun n => nth_ n = f) (decP f) (P f))) as phi_.
+        exists nth_, (fun f => pi1 (phi_ f)). intro φ.  
+        destruct (phi_ φ). eauto. 
+    Qed.
+    
+    Lemma enum_term: countable_sig -> exists (phi_: nat -> term) nth_, forall phi, phi_ (nth_ phi) = phi.
+    Proof.
+        intros [[[h1 h2] h3] h4].
+        apply enum_enumT in h1. destruct h1 as [f Hf].
+        edestruct enumT_term as [nth Hnth]; eauto. 
+        pose (nth_ := fun n => match nth n with | Some f => f | None => $42 end).
+        unfold EnumerabilityFacts.enumerator__T' in Hnth.
+        assert (forall x : term, exists n : nat, nth_ n = x) as P.
+        { intro x. destruct (Hnth x) as [w Hw]. exists w. unfold nth_. now rewrite Hw. }
+        assert (forall n x: term, {n = x} + {~ n = x}) as decTerm.
+        { apply dec_term; eauto. }
+        assert (forall f, decider (fun n : nat => nth_ n = f) ) as decP.
+        { intros x y. destruct (decTerm x (nth_ y)); [now left | right; eauto]. } 
+        specialize (fun f => (@W (fun n => nth_ n = f) (decP f) (P f))) as phi_.
+        exists nth_, (fun f => pi1 (phi_ f)). intro φ.  
+        destruct (phi_ φ). eauto. 
+    Qed.
+
+End Countable_Sig.
+
 Section LöwenheimSkolemTheorem.
 
-    Context {Σ_funcs : funcs_signature}.
-    Context {Σ_preds : preds_signature}.
-
-    Definition syntatic_model_on (M: model) :=  
+    Definition syntatic_model_on `{funcs_signature} `{preds_signature} (M: model) :=  
         exists (N: interp term) (h: term -> M), 
             forall φ ρ, Build_model N ⊨[ρ] φ <-> M ⊨[ρ >> h] φ.
 
@@ -108,25 +154,28 @@ Section LöwenheimSkolemTheorem.
         exists f: nat -> M, surjective f.
 
     Definition LöwenheimSkolemTheorem :=
-       forall M: model, M -> exists N: model, a_coutable_model N /\ N ⪳ M.
+        forall (Σ_f: funcs_signature) (Σ_p: preds_signature), 
+            countable_sig -> forall M: model, M -> exists N: model, a_coutable_model N /\ N ⪳ M.
 
-    Definition LS := forall M: model, M -> syntatic_model_on M.
-
-    Hypothesis surjective_term: exists f: nat -> term, surjective f.
+    Definition LS := 
+        forall (Σ_f: funcs_signature) (Σ_p: preds_signature),
+            countable_sig -> forall M: model, M -> syntatic_model_on M.
 
     Fact LS_correct: LS -> LöwenheimSkolemTheorem.
     Proof.
-        intros H M m.
-        destruct (H M m) as (I & h & HI).
+        intros H Σ_f Σ_p Hc M m.
+        destruct (H _ _ Hc M m) as (I & h & HI).
         unshelve eexists. { econstructor. exact I. }
-        split. apply surjective_term.
+        split. destruct enum_term as (psi_ & nth'_ & Hpsi); eauto.
+        exists psi_. intros n. exists (nth'_ n). now rewrite Hpsi. 
         exists h. intros ??; apply HI.
     Qed.
 
     Definition LS_root :=
-        forall (M: model), forall m,
-            exists (N: model), a_coutable_model N /\ 
-                (exists h: N -> M, N ⪳[h] M /\ exists n: N, h n = m).
+        forall (Σ_f: funcs_signature) (Σ_p: preds_signature),
+            forall (M: model), forall m,
+                exists (N: model), a_coutable_model N /\ 
+                    (exists h: N -> M, N ⪳[h] M /\ exists n: N, h n = m).
 
     Definition bijective_comp {X Y} :=
         exists f g, (forall x: X, g (f x) = x) /\ forall y: Y, f (g y) = y.

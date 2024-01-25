@@ -1,15 +1,22 @@
-(* Require Import Undecidability.FOL.FullSyntax. *)
-(* Require Export Undecidability.FOL.Syntax.Theories. *)
 Require Import Undecidability.FOL.Syntax.BinSig.
 Require Import Coq.Logic.EqdepFacts Coq.Logic.FinFun.
 Require Import Undecidability.FOL.ModelTheory.DCPre.
 Require Import Undecidability.FOL.ModelTheory.Core.
 Require Import Program.Equality Vectors.VectorDef.
+Require Import Coq.Arith.Peano_dec.
 
 Section LSBDPBEP.
 
     Instance sig_unary : preds_signature | 0 :=
         {| preds := unit;  ar_preds := fun _ => 1 |}.
+
+    Fact Unary_countable: countable_sig.
+    Proof.
+        repeat split.
+        - exists (fun _ => None); intros [].
+        - exists (fun _ => Some tt). intros []. now exists 42.
+        - intros []. - intros [] []. now left.
+    Qed.
 
     Instance interp__U (A: Type) (P: A -> Prop): interp A :=
         {
@@ -23,46 +30,117 @@ Section LSBDPBEP.
             interp' := (@interp__U A P)
         |}.
 
-    Variable tnth_: nat -> term. 
-    Hypothesis Hterm: forall t, exists n, tnth_ n = t. 
-
     Lemma LS_impl_BEP: LS -> BEP.
     Proof.
-        intros LS A P a. destruct (LS (model__U P) a) as [i_N [h emb]].
-        exists (fun n => h (tnth_ n)).
+        intros LS A P a. destruct (LS _ _ Unary_countable (model__U P) a) as [i_N [h emb]].
+        destruct enum_term as (phi_ & nth_ & Hphi); [apply Unary_countable|].
+        exists (fun n => h (phi_ n)).
         specialize (emb (∃ (atom tt) (cons _ ($0) 0 (nil _))) var) as emb'; cbn in emb'.
         intro H'. destruct emb' as [H1 [t Ht]].
-        exact H'. destruct (Hterm t) as [w Hw].
-        exists w. rewrite Hw.
+        exact H'. exists (nth_ t). rewrite Hphi.
         specialize (emb ((atom tt) (cons _ ($0) 0 (nil _))) (fun n => t)) ; cbn in emb.
         unfold ">>" in emb. now rewrite <- emb.
     Qed.
 
-    Lemma LS_imples_BDP: LS -> BDP.
+    Lemma LS_impl_BDP: LS -> BDP.
     Proof.
-        intros LS A P a.
-        destruct (LS (model__U P) a ) as [i_N [h emb]].
-        exists (fun n => h (tnth_ n)).
+        intros LS A P a. destruct (LS _ _ Unary_countable (model__U P) a) as [i_N [h emb]].
+        destruct enum_term as (phi_ & nth_ & Hphi); [apply Unary_countable|].
+        exists (fun n => h (phi_ n)).
         specialize (emb (∀ (atom tt) (cons _ ($0) 0 (nil _))) var) as emb'; cbn in emb'.
-        intro H'; apply emb'.
-        intro d.
+        intro H'; apply emb'. intro d.
         specialize (emb ((atom tt) (cons _ ($0) 0 (nil _))) (fun n => d) ); cbn in emb.
-        rewrite emb; unfold ">>".
-        now destruct (Hterm d) as [x <-].
+        rewrite emb; unfold ">>". specialize (H' (nth_ d)).
+        now rewrite Hphi in H'.
     Qed.
 
 End LSBDPBEP.
 
+Section LS_implies_BDC.
+
+    Section proof_env.
+
+    Fact Binary_countable: countable_sig.
+    Proof.
+        repeat split.
+        - exists (fun _ => None); intros [].
+        - exists (fun _ => Some tt). intros []. now exists 42.
+        - intros []. - intros [] []. now left.
+    Qed.
+
+        Variable B: Type.
+        Variable R: B -> B  -> Prop.
+
+        Instance interp__B' : interp B :=
+        {
+            i_func := fun F v => match F return B with end;
+            i_atom := fun P v => R (hd v) (hd (tl v))
+        }.
+
+        Definition Model__B': model :=
+        {|
+            domain := B;
+            interp' := interp__B'
+        |}.
+
+        Import VectorNotations.
+
+        Definition tuple' := [($1); ($0)].
+        Definition coding_totality' := ∀ ∃ (atom tt tuple').
+
+        Lemma total_coding':
+            inhabited B -> (forall x, exists z, R x z) <-> Model__B' ⊨[_] coding_totality'.
+        Proof.
+            intros [b]; cbn; split; intros; eauto.
+            destruct (H (fun _ => b) x); eauto.
+        Qed.
+
+        Definition BDC_on' X (R: X -> X -> Prop) :=
+            X -> total R -> 
+                exists f: nat -> X, forall x, exists z, R (f x) (f z).
+
+        Lemma impl_BDC: LS -> inhabited B -> BDC_on' R.
+        Proof.
+            intros HLS [b]. destruct (HLS _ _ Binary_countable Model__B' b) as [N [h Hh]].
+            destruct (enum_term Unary_countable) as (phi_ & nth_ & Hphi).
+            intros b' Ht. exists (fun x => h (phi_ x)).
+            specialize (Hh coding_totality') as Hh1. cbn in Hh1.
+            rewrite <-  Hh1 in Ht; [| exact (fun _ => $42)]. 
+            specialize (Hh (atom tt tuple')) as Hh0.
+            cbn in Hh0.
+            intros x. destruct (Ht (phi_ x)) as [w Hw].
+            pose (ρ n := match n with O => w | _ => phi_ x end).
+            specialize (Hh0 ρ); cbn in Hh0.
+            rewrite Hh0 in Hw. exists (nth_ w). rewrite Hphi.
+            unfold ">>" in Hw. easy.
+        Qed.
+
+    End proof_env.
+
+    Theorem LS_impl_BDC: LS -> BDC.
+    Proof.
+        intros H X R x; eapply impl_BDC; eauto.
+    Qed.
+
+    Theorem LS_CC_impl_DC: AC00 -> LS -> DC.
+    Proof.
+        intros H1 H2%LS_impl_BDC. 
+        apply BDC_AC00_impl_DC; eauto.
+    Qed.
+
+End LS_implies_BDC.
 
 Section LS_implies_OBDC.
 
     Instance sig_B : preds_signature | 0 := {| preds := unit;  ar_preds := fun _ => 3 |}.
-    Variable E_term: nat -> term. 
-    Variable term_E: term -> nat. 
-    Hypothesis E_Κ: forall w, E_term (term_E w) = w.
 
-    Section proof_env.    
-    Hypothesis IH : LS.
+    Fact Tri_countable: countable_sig.
+    Proof.
+        repeat split.
+        - exists (fun _ => None); intros [].
+        - exists (fun _ => Some tt). intros []. now exists 42.
+        - intros []. - intros [] []. now left.
+    Qed.
 
     Variable B: Type.
     Variable R: B -> B -> B -> Prop.
@@ -95,55 +173,51 @@ Section LS_implies_OBDC.
         X -> exists f: nat -> X, 
             total_tr R <-> forall x y, exists z, R (f x) (f y) (f z).
 
-    Lemma impl_OBDC: inhabited B -> OBDC_on' R.
+    Lemma impl_OBDC: LS -> OBDC_on' R.
     Proof.
-        intros [b]; destruct (@IH Model__B b) as [N [h Hh]].
-        exists (fun x => h (E_term x)).
-        specialize (Hh coding_totality) as Hh1.
-        cbn in Hh1.
+        intros HLS b. destruct (HLS _ _ Tri_countable Model__B b) as [N [h Hh]].
+        destruct (enum_term Unary_countable) as (phi_ & nth_ & Hphi).
+        exists (fun x => h (phi_ x)).
+        specialize (Hh coding_totality) as Hh1. cbn in Hh1.
         rewrite <-  Hh1; [| exact (fun _ => $42)].
-        specialize (Hh (atom tt tuple)) as Hh0.
-        cbn in Hh0.
+        specialize (Hh (atom tt tuple)) as Hh0. cbn in Hh0.
         split.
-        - intros.
-          destruct (H (E_term x) (E_term y)) as [w Hw].
-          pose (ρ n := match n with O => w | 1 => E_term y | _ => E_term x end).
-          specialize (Hh0 ρ); cbn in Hh0.
-          rewrite Hh0 in Hw.
-          exists (term_E w).
-          unfold ">>" in Hw. cbn in Hw.
-          now rewrite E_Κ.
+        - intros. destruct (H (phi_ x) (phi_ y)) as [w Hw].
+          pose (ρ n := match n with O => w | 1 => phi_ y | _ => phi_ x end).
+          specialize (Hh0 ρ); cbn in Hh0. rewrite Hh0 in Hw.
+          exists (nth_ w). unfold ">>" in Hw. cbn in Hw.
+          now rewrite !Hphi. 
         - intros H d1 d2.
-          destruct (H (term_E d1) (term_E d2)) as [w Hw].
-          rewrite !E_Κ in Hw.
-          exists (E_term w).
-          pose (ρ n := match n with O => E_term w |1 => d2 |_ => d1 end).
+          destruct (H (nth_ d1) (nth_ d2)) as [w Hw]. rewrite !Hphi in Hw.
+          exists (phi_ w). pose (ρ n := match n with O => phi_ w |1 => d2 |_ => d1 end).
           specialize (Hh0 ρ); cbn in Hh0.
           rewrite Hh0.
           now unfold ">>"; cbn.
     Qed.
-            
-    End proof_env.
+
+End LS_implies_OBDC.
 
     Theorem LS_impl_OBDC: LS -> OBDC.
     Proof.
         intros H X R x; eapply impl_OBDC; eauto.
     Qed.
 
-End LS_implies_OBDC.
+
 
 Section LS_imples_BCC.
-
-    Variable E_term: nat -> term. 
-    Variable term_E: term -> nat. 
-    Hypothesis E_Κ: forall w, E_term (term_E w) = w.
 
     Instance sig_A : preds_signature | 0 :=
         {| preds := nat;  ar_preds := fun _ => 1 |}.
 
-    Section proof_env.
-
-    Hypothesis LS: LS.
+    Fact ω_countable: countable_sig.
+    Proof.
+        repeat split.
+        - exists (fun _ => None); intros [].
+        - exists (fun n => Some n). intros n. now exists n.
+        - intros [].  - intros n m. induction n in m |-*; destruct m.
+          now left. now right. now right. 
+          elim (IHn m); firstorder.
+    Qed.
 
     Variable A: Type.
     Variable P: nat -> A -> Prop.
@@ -163,27 +237,28 @@ Section LS_imples_BCC.
         B -> (forall x, exists y, P' x y) ->
             exists f: nat -> B, forall n, exists m, P' n (f m).
 
-    Theorem impl_BCC: (@BCC_on' A P).
+    Theorem impl_BCC: LS -> @BCC_on' A P.
     Proof.
-        intros a total_R.
+        intros HLS a total_R.
+        destruct (enum_term ω_countable) as (phi_ & nth_ & Hphi).
         assert (forall n ρ, ρ ⊨ (∃ (atom _ _ _ _ n (cons _ ($0) _ (nil _))))).
         - cbn; intros; apply total_R.
-        - destruct (@LS model_A a) as [N [h ele_el__h ]].
+        - destruct (HLS _ _ ω_countable model_A a) as [N [h ele_el__h ]].
           assert (forall m (ρ : env term), ρ ⊨ (∃ atom m (cons term $0 0 (nil term)))).
           + intro m; specialize (ele_el__h (∃ atom m (cons term $0 0 (nil term)))).
             intro rho; rewrite ele_el__h.
             cbn; apply total_R.
-          + exists (fun n => h (E_term n)).
+          + exists (fun n => h (phi_ n)).
             intro m; destruct (H0 m var) as [x Hx].
-            exists (term_E x).
+            exists (nth_ x).
             specialize (ele_el__h (atom m (cons term ($0) 0 (nil term))) (fun _ => x)).
             cbn in ele_el__h.
-            rewrite E_Κ.
+            rewrite Hphi.
             unfold ">>" in ele_el__h; rewrite <- ele_el__h.
             now cbn in Hx.
     Qed.
-            
-    End proof_env.
+
+End LS_imples_BCC.
 
     Theorem LS_impl_BCC: LS -> BCC.
     Proof.
@@ -191,9 +266,7 @@ Section LS_imples_BCC.
         eapply impl_BCC; eauto.
     Qed.
 
-End LS_imples_BCC.
-
-
+(* 
 Section joint.
 
     Definition forall_times {Σ_funcs : funcs_signature} {Σ_preds : preds_signature} {ff : falsity_flag} 
@@ -345,8 +418,8 @@ Section joint_facts.
           now rewrite join_rev_join.
     Qed.
 
-End joint_facts.
-
+End joint_facts. *)
+(* 
 Section VBDC.
 
     Variable A: Type.
@@ -354,6 +427,16 @@ Section VBDC.
 
     Instance sig_L : preds_signature | 0 :=
         {| preds := nat; ar_preds := fun n => S n |}.
+
+    Fact v_counatble: countable_sig.
+    Proof.
+    repeat split.
+    - exists (fun _ => None); intros [].
+    - exists (fun n => Some n). intros n. now exists n.
+    - intros [].  - intros n m. induction n in m |-*; destruct m.
+        now left. now right. now right. 
+        elim (IHn m); firstorder.
+    Qed.
 
     Definition tl {A n} (v: vec A (S n)): vec A n :=
         match v with
@@ -477,10 +560,10 @@ Section VBDC.
 
     End under_LS.
 
-End VBDC.
+End VBDC. *)
 
 
-Section LS_imples_BAC.
+(* Section LS_imples_BAC.
 
     Variable κ: Type.   
     Instance sig_κ : preds_signature | 0 :=
@@ -530,6 +613,6 @@ Section LS_imples_BAC.
             now cbn in Hx.
     Qed.
 
-End LS_imples_BAC.
+End LS_imples_BAC. *)
 
 

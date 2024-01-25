@@ -670,15 +670,11 @@ End FixedModel.
 
 Section Result.
 
-    Context {Σf : funcs_signature} {Σp : preds_signature}.
-    Variable phi_: nat -> form.
-    Variable nth_: form -> nat.
-    Hypothesis Hphi: forall phi, phi_ (nth_ phi) = phi.
-
     Theorem LS_downward_with_DC_LEM: 
-        LEM -> DC -> LS.
+       LEM -> DC -> LS.
     Proof.
-        intros LEM DC M m.
+        intros LEM DC Σ_f Σ_p C_Σ M m.
+        destruct (enum_form C_Σ) as (phi_ & nth_ & Hphi).
         destruct (DC _ (@henkin_next _ _ M)) as [F PF]; eauto.
         { exact (fun n => m). }
         { intros A. unshelve eapply dp_Next_env; eauto.
@@ -697,7 +693,8 @@ Section Result.
     Theorem LS_downward_with_BDP_BEP_DC:
         BDP -> BEP -> DC -> LS.
     Proof.
-        intros BDP BEP DC M m.
+        intros BDP BEP DC Σ_f Σ_p C_Σ M m.
+        destruct (enum_form C_Σ) as (phi_ & nth_ & Hphi).
         assert (BCC: BCC). eapply BDC_impl_BCC.
         now apply DC_impl_BDC.
         destruct (DC _ (@blurred_henkin_next _ _ M)) as [F PF]; eauto.
@@ -711,10 +708,12 @@ Section Result.
         exists N, h. eapply Ph.
     Qed.
 
+
     Theorem LS_downward:
         BDP -> BEP -> DDC -> BCC -> LS.
     Proof.
-        intros BDP BEP DDC BCC M m.
+        intros BDP BEP DDC BCC Σ_f Σ_p C_Σ M m.
+        destruct (enum_form C_Σ) as (phi_ & nth_ & Hphi).
         destruct (DDC _ (@blurred_henkin_next _ _ M)) as [F PF]; eauto.
         { exact (fun n => m). }
         { intros x y z Hx Hy. apply (trans_succ Hx Hy). }
@@ -727,15 +726,17 @@ Section Result.
         exists N, h. eapply Ph.
     Qed.
 
-    Theorem LS_downward': 
-        OBDC -> LS.
+    Theorem LS_downward':  OBDC -> LS.
     Proof.
-        intros H. assert BDC2 as H'.
+        intros ? ? H_ H1. assert BDC2 as H2.
         {intro A; eapply OBDC_impl_BDC2_on; eauto. }
-        rewrite BDC2_iff_DDC_BCC in H'. destruct H'.
+        rewrite BDC2_iff_DDC_BCC in H2. destruct H2.
         eapply LS_downward; eauto.
         - intro A. eapply (@OBDC_impl_BDP_on A); eauto.
         - intro A. eapply (@OBDC_impl_BEP_on A); eauto.
     Qed.
 
 End Result.
+
+
+

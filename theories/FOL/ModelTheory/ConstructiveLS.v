@@ -215,7 +215,7 @@ Section Henkin_Env.
 
 End Henkin_Env.
 
-Section Henkin_LS.
+Section HenkinLS.
 
     Context {Σf : funcs_signature} {Σp : preds_signature}.
 
@@ -245,5 +245,5 @@ Section Henkin_LS.
         eapply Blurred_Henkin_env_el; eauto.
     Qed.
 
-End Henkin_LS.
+End HenkinLS.
 

@@ -1,5 +1,4 @@
 From Coq Require Import Arith Lia Nat PeanoNat.
-Require Import Undecidability.FOL.ModelTheory.FragmentCore.
 Require Export Undecidability.FOL.ModelTheory.LogicalPrinciples.
 
 Notation "'Σ' x .. y , p" :=
@@ -12,15 +11,6 @@ Notation unique p := (forall x y, p x -> p y -> x = y).
 Notation sig := sigT.
 Notation Sig := existT.
 Notation pi1 := projT1.
-
-Definition dec (X: Type) : Type := X + (X -> False).
-Definition logical_dec (X: Prop): Prop := X \/ (X -> False).
-
-Notation decidable p := (forall x, dec (p x)).
-Notation logical_decidable p := (forall x, logical_dec (p x)).
-
-Definition eqdec X := forall x y: X, dec (x = y).
-Notation decider p := (forall x, dec (p x)).
 
 Section Least_witness.
 
