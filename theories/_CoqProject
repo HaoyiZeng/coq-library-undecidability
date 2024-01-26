@@ -952,6 +952,8 @@ FOL/ModelTheory/ConstructiveLS.v
 FOL/ModelTheory/HenkinEnv.v
 FOL/ModelTheory/ReverseLS.v
 
+FOL/ModelTheory/AnalysisLS.v
+
 
 
 
