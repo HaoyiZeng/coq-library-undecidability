@@ -54,26 +54,25 @@ Section DC.
     Qed.
 
     Lemma exists_next:
-    forall B (R': B -> B -> Prop), a_coutable_model B ->
+    forall B (R': B -> B -> Prop), coutable_model B ->
         (forall x, exists y, R' x y) -> exists f: nat -> B,
             forall b, exists n, R' b (f n).
     Proof.
-        intros B R' [f sur] total.
+        intros B R' (f & h & sur) total.
         exists f. intro b.
-        destruct (total b) as [c Rbc], (sur c) as [m p].
-        exists m. now rewrite p.
+        destruct (total b) as [c Rbc].
+        exists (h c). now rewrite sur.
     Qed.    
 
     Section dec__R_full.
 
     Definition dec_R := forall x y, dec (R x y).
 
-    Lemma LS_impl_DC: LöwenheimSkolemTheorem -> dec_R -> DC_on' R.
+    Lemma LS_impl_DC: DLS -> dec_R -> DC_on' R.
     Proof using a.
         intros LS DecR _ total.
-        destruct (LS sig_empty sig_binary Σ_countable Model__A a) as [N [[h Hh] [f HN]]].
+        destruct (LS sig_empty sig_binary Σ_countable Model__A a) as [N [(h & g & Hh) [f HN]]].
         specialize (@total_sat ((fun _ => (h 42)) >> f) total ) as total'.
-        (* unfold elementary_homomorphism in ele_el__h. *)
         apply HN in total'.
         assert (exists R', (forall x: N, (exists y: N, R' x y)) /\ (forall α β, R' α β <-> R (f  α) (f β))).
         exists (fun x y => tt ₚ[ N] cons N x 1 (cons N y 0 (nil N))).
@@ -83,9 +82,11 @@ Section DC.
         destruct H as [R' [P1 P2]].
         assert (forall x y, dec (R' x y)) as dec__R'.
         { intros x y. destruct (DecR (f x) (f y)); firstorder. }
-        destruct (@DC_ω _ _ h Hh dec__R' P1 (h 42)) as [g [case0 Choice]].
-        exists (g >> f); unfold ">>". 
-        intro n'; now rewrite <- (P2 (g n') (g (S n'))).
+        assert (forall n : N, exists m : nat, h m = n) as Ht.
+        { intro n. exists (g n). now rewrite Hh. }
+        destruct (@DC_ω _ _ h Ht dec__R' P1 (h 42)) as [g' [case0 Choice]].
+        exists (g' >> f); unfold ">>". 
+        intro n'; now rewrite <- (P2 (g' n') (g' (S n'))).
     Qed.
 
     End dec__R_full.
@@ -160,12 +161,12 @@ End DC.
 
 Section DCRes.
 
-    Theorem LS_impl_DC_delta: LöwenheimSkolemTheorem -> DC__Δ .
+    Theorem LS_impl_DC_delta: DLS -> DC__Δ .
     Proof.
         intros H X R dec_R x tot_R.
         apply LS_impl_DC; eauto.
     Qed.
-    
+
 End DCRes.
 
 

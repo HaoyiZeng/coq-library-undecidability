@@ -30,24 +30,22 @@ Section LSBDPBEP.
             interp' := (@interp__U A P)
         |}.
 
-    Lemma LS_impl_BEP: LS -> BEP.
+    Lemma LS_impl_BEP: DLS -> BEP.
     Proof.
-        intros LS A P a. destruct (LS _ _ Unary_countable (model__U P) a) as [i_N [h emb]].
-        destruct enum_term as (phi_ & nth_ & Hphi); [apply Unary_countable|].
+        intros LS A P a. destruct (LS _ _ Unary_countable (model__U P) a) as [i_N [ (phi_ & nth_ & Hphi) [h emb]]].
         exists (fun n => h (phi_ n)).
-        specialize (emb (∃ (atom tt) (cons _ ($0) 0 (nil _))) var) as emb'; cbn in emb'.
+        specialize (emb (∃ (atom tt) (cons _ ($0) 0 (nil _))) phi_) as emb'; cbn in emb'.
         intro H'. destruct emb' as [H1 [t Ht]].
         exact H'. exists (nth_ t). rewrite Hphi.
         specialize (emb ((atom tt) (cons _ ($0) 0 (nil _))) (fun n => t)) ; cbn in emb.
         unfold ">>" in emb. now rewrite <- emb.
     Qed.
 
-    Lemma LS_impl_BDP: LS -> BDP.
+    Lemma LS_impl_BDP: DLS -> BDP.
     Proof.
-        intros LS A P a. destruct (LS _ _ Unary_countable (model__U P) a) as [i_N [h emb]].
-        destruct enum_term as (phi_ & nth_ & Hphi); [apply Unary_countable|].
+        intros LS A P a.  destruct (LS _ _ Unary_countable (model__U P) a) as [i_N [ (phi_ & nth_ & Hphi) [h emb]]].
         exists (fun n => h (phi_ n)).
-        specialize (emb (∀ (atom tt) (cons _ ($0) 0 (nil _))) var) as emb'; cbn in emb'.
+        specialize (emb (∀ (atom tt) (cons _ ($0) 0 (nil _))) phi_) as emb'; cbn in emb'.
         intro H'; apply emb'. intro d.
         specialize (emb ((atom tt) (cons _ ($0) 0 (nil _))) (fun n => d) ); cbn in emb.
         rewrite emb; unfold ">>". specialize (H' (nth_ d)).
@@ -99,13 +97,12 @@ Section LS_implies_BDC.
             X -> total R -> 
                 exists f: nat -> X, forall x, exists z, R (f x) (f z).
 
-        Lemma impl_BDC: LS -> inhabited B -> BDC_on' R.
+        Lemma impl_BDC:  DLS -> inhabited B -> BDC_on' R.
         Proof.
-            intros HLS [b]. destruct (HLS _ _ Binary_countable Model__B' b) as [N [h Hh]].
-            destruct (enum_term Unary_countable) as (phi_ & nth_ & Hphi).
+            intros HLS [b]. destruct (HLS _ _ Binary_countable Model__B' b) as [N [(phi_ & nth_ & Hphi) [h Hh]]].
             intros b' Ht. exists (fun x => h (phi_ x)).
             specialize (Hh coding_totality') as Hh1. cbn in Hh1.
-            rewrite <-  Hh1 in Ht; [| exact (fun _ => $42)]. 
+            rewrite <-  Hh1 in Ht; [| exact (fun _ => phi_ 42)]. 
             specialize (Hh (atom tt tuple')) as Hh0.
             cbn in Hh0.
             intros x. destruct (Ht (phi_ x)) as [w Hw].
@@ -117,12 +114,12 @@ Section LS_implies_BDC.
 
     End proof_env.
 
-    Theorem LS_impl_BDC: LS -> BDC.
+    Theorem LS_impl_BDC: DLS -> BDC.
     Proof.
         intros H X R x; eapply impl_BDC; eauto.
     Qed.
 
-    Theorem LS_CC_impl_DC: AC00 -> LS -> DC.
+    Theorem LS_CC_impl_DC: AC00 -> DLS -> DC.
     Proof.
         intros H1 H2%LS_impl_BDC. 
         apply BDC_AC00_impl_DC; eauto.
@@ -173,13 +170,12 @@ Section LS_implies_OBDC.
         X -> exists f: nat -> X, 
             total_tr R <-> forall x y, exists z, R (f x) (f y) (f z).
 
-    Lemma impl_OBDC: LS -> OBDC_on' R.
+    Lemma impl_OBDC: DLS -> OBDC_on' R.
     Proof.
-        intros HLS b. destruct (HLS _ _ Tri_countable Model__B b) as [N [h Hh]].
-        destruct (enum_term Unary_countable) as (phi_ & nth_ & Hphi).
+        intros HLS b. destruct (HLS _ _ Tri_countable Model__B b) as [N [(phi_ & nth_ & Hphi) [h Hh]]].
         exists (fun x => h (phi_ x)).
         specialize (Hh coding_totality) as Hh1. cbn in Hh1.
-        rewrite <-  Hh1; [| exact (fun _ => $42)].
+        rewrite <-  Hh1; [| exact phi_].
         specialize (Hh (atom tt tuple)) as Hh0. cbn in Hh0.
         split.
         - intros. destruct (H (phi_ x) (phi_ y)) as [w Hw].
@@ -197,13 +193,12 @@ Section LS_implies_OBDC.
 
 End LS_implies_OBDC.
 
-    Theorem LS_impl_OBDC: LS -> OBDC.
+    Theorem LS_impl_OBDC: DLS -> OBDC.
     Proof.
         intros H X R x; eapply impl_OBDC; eauto.
     Qed.
 
-
-
+(* 
 Section LS_imples_BCC.
 
     Instance sig_A : preds_signature | 0 :=
@@ -237,14 +232,14 @@ Section LS_imples_BCC.
         B -> (forall x, exists y, P' x y) ->
             exists f: nat -> B, forall n, exists m, P' n (f m).
 
-    Theorem impl_BCC: LS -> @BCC_on' A P.
+    Theorem impl_BCC: DLS -> @BCC_on' A P.
     Proof.
+        
         intros HLS a total_R.
-        destruct (enum_term ω_countable) as (phi_ & nth_ & Hphi).
+        destruct (HLS _ _ ω_countable model_A a) as [N [(phi_ & nth_ & Hphi) [h Hh]]].
         assert (forall n ρ, ρ ⊨ (∃ (atom _ _ _ _ n (cons _ ($0) _ (nil _))))).
         - cbn; intros; apply total_R.
-        - destruct (HLS _ _ ω_countable model_A a) as [N [h ele_el__h ]].
-          assert (forall m (ρ : env term), ρ ⊨ (∃ atom m (cons term $0 0 (nil term)))).
+        -  assert (forall m (ρ : env term), ρ ⊨ (∃ atom m (cons term $0 0 (nil term)))).
           + intro m; specialize (ele_el__h (∃ atom m (cons term $0 0 (nil term)))).
             intro rho; rewrite ele_el__h.
             cbn; apply total_R.
@@ -264,7 +259,7 @@ End LS_imples_BCC.
     Proof.
         intros H X R HR.
         eapply impl_BCC; eauto.
-    Qed.
+    Qed. *)
 
 (* 
 Section joint.
@@ -614,5 +609,3 @@ End VBDC. *)
     Qed.
 
 End LS_imples_BAC. *)
-
-

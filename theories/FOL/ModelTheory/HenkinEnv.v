@@ -671,7 +671,7 @@ End FixedModel.
 Section Result.
 
     Theorem LS_downward_with_DC_LEM: 
-       LEM -> DC -> LS.
+       LEM -> DC -> SyntaticLS.
     Proof.
         intros LEM DC Σ_f Σ_p C_Σ M m.
         destruct (enum_form C_Σ) as (phi_ & nth_ & Hphi).
@@ -691,7 +691,7 @@ Section Result.
     Qed.
 
     Theorem LS_downward_with_BDP_BEP_DC:
-        BDP -> BEP -> DC -> LS.
+        BDP -> BEP -> DC -> SyntaticLS.
     Proof.
         intros BDP BEP DC Σ_f Σ_p C_Σ M m.
         destruct (enum_form C_Σ) as (phi_ & nth_ & Hphi).
@@ -710,7 +710,7 @@ Section Result.
 
 
     Theorem LS_downward:
-        BDP -> BEP -> DDC -> BCC -> LS.
+        BDP -> BEP -> DDC -> BCC -> SyntaticLS.
     Proof.
         intros BDP BEP DDC BCC Σ_f Σ_p C_Σ M m.
         destruct (enum_form C_Σ) as (phi_ & nth_ & Hphi).
@@ -726,7 +726,7 @@ Section Result.
         exists N, h. eapply Ph.
     Qed.
 
-    Theorem LS_downward':  OBDC -> LS.
+    Theorem LS_downward':  OBDC -> SyntaticLS.
     Proof.
         intros ? ? H_ H1. assert BDC2 as H2.
         {intro A; eapply OBDC_impl_BDC2_on; eauto. }

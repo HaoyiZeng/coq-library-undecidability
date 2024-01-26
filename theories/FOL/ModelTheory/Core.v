@@ -139,6 +139,9 @@ Section Countable_Sig.
         destruct (phi_ φ). eauto. 
     Qed.
 
+    Definition coutable_model M := 
+        exists (to_M: nat -> M) (of_M: M -> nat), forall m, to_M (of_M m) = m.
+
 End Countable_Sig.
 
 Section LöwenheimSkolemTheorem.
@@ -147,41 +150,39 @@ Section LöwenheimSkolemTheorem.
         exists (N: interp term) (h: term -> M), 
             forall φ ρ, Build_model N ⊨[ρ] φ <-> M ⊨[ρ >> h] φ.
 
-    Definition surjective {M N} (f: M -> N) :=
-        forall n: N, exists m: M, f m = n.
+    Definition LöwenheimSkolemTheorem_on `{funcs_signature} `{preds_signature} (M: model) :=
+        exists N: model, coutable_model N /\ N ⪳ M.
 
-    Definition a_coutable_model M :=
-        exists f: nat -> M, surjective f.
-
-    Definition LöwenheimSkolemTheorem :=
-        forall (Σ_f: funcs_signature) (Σ_p: preds_signature), 
-            countable_sig -> forall M: model, M -> exists N: model, a_coutable_model N /\ N ⪳ M.
-
-    Definition LS := 
+    Definition SyntaticLS := 
         forall (Σ_f: funcs_signature) (Σ_p: preds_signature),
             countable_sig -> forall M: model, M -> syntatic_model_on M.
 
-    Fact LS_correct: LS -> LöwenheimSkolemTheorem.
+    Definition DLS := 
+        forall (Σ_f: funcs_signature) (Σ_p: preds_signature),
+            countable_sig -> forall M: model, M -> LöwenheimSkolemTheorem_on M.
+
+    Fact LS_correct: SyntaticLS -> DLS.
     Proof.
         intros H Σ_f Σ_p Hc M m.
         destruct (H _ _ Hc M m) as (I & h & HI).
         unshelve eexists. { econstructor. exact I. }
         split. destruct enum_term as (psi_ & nth'_ & Hpsi); eauto.
-        exists psi_. intros n. exists (nth'_ n). now rewrite Hpsi. 
+        exists psi_, nth'_; eauto.
         exists h. intros ??; apply HI.
     Qed.
 
-    Definition LS_root :=
-        forall (Σ_f: funcs_signature) (Σ_p: preds_signature),
-            forall (M: model), forall m,
-                exists (N: model), a_coutable_model N /\ 
-                    (exists h: N -> M, N ⪳[h] M /\ exists n: N, h n = m).
-
-    Definition bijective_comp {X Y} :=
-        exists f g, (forall x: X, g (f x) = x) /\ forall y: Y, f (g y) = y.
-
-    Definition LS_root' :=
-        forall (Σf : funcs_signature) (Σp : preds_signature) (M: model), forall m,
-            exists (N: model), @bijective_comp N nat /\ (exists h: N -> M, elementary_homomorphism h /\ exists n: N, h n = m).
-
 End LöwenheimSkolemTheorem.
+
+(* Definition LS_root :=
+    forall (Σ_f: funcs_signature) (Σ_p: preds_signature),
+        forall (M: model), forall m,
+            exists (N: model), coutable_model N /\ 
+                (exists h: N -> M, N ⪳[h] M /\ exists n: N, h n = m).
+
+Definition bijective_comp {X Y} :=
+    exists f g, (forall x: X, g (f x) = x) /\ forall y: Y, f (g y) = y.
+
+Definition LS_root' :=
+    forall (Σf : funcs_signature) (Σp : preds_signature) (M: model), forall m,
+        exists (N: model), @bijective_comp N nat /\ (exists h: N -> M, elementary_homomorphism h /\ exists n: N, h n = m).
+ *)
