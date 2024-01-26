@@ -1,4 +1,4 @@
-(** ** Kripke Completeness **)
+(** Kripke Completeness **)
 
 From Undecidability.FOL Require Import Syntax.Facts Syntax.Asimpl Deduction.FragmentNDFacts Deduction.FragmentNDConsistency Syntax.Theories Semantics.Kripke.FragmentCore
                                        Semantics.Kripke.FragmentSoundness 

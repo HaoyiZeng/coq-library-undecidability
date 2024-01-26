@@ -1,4 +1,4 @@
-(** ** Signature Minimisation *)
+(** Signature Minimisation *)
 
 From Undecidability.DiophantineConstraints Require Import H10C H10C_undec.
 From Undecidability.FOL.Syntax Require Import Core BinSig.

@@ -318,7 +318,7 @@ Section CHAProperty.
 End CHAProperty.
 
 
-(** ** Heyting Semantics **)
+(** Heyting Semantics **)
 
 Section CHAEval.
 

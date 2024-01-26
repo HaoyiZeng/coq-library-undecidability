@@ -1,4 +1,4 @@
-(** ** Abstract Incompleteness *)
+(** Abstract Incompleteness *)
 
 From Undecidability.FOL.Incompleteness Require Import utils formal_systems epf.
 

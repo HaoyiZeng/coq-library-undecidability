@@ -1,4 +1,4 @@
-(** ** Set Theory *)
+(** Set Theory *)
 
 Require Import Undecidability.Synthetic.Definitions Undecidability.Synthetic.Undecidability.
 

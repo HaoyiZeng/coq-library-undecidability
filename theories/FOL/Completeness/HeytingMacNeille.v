@@ -1,4 +1,4 @@
-(** ** MacNeille Completion *)
+(** MacNeille Completion *)
 
 Set Implicit Arguments.
 Unset Strict Implicit.

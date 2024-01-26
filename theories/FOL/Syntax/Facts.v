@@ -1,4 +1,4 @@
-(** ** Syntax Facts *)
+(** Syntax Facts *)
 
 From Undecidability.Synthetic Require Import Definitions DecidabilityFacts EnumerabilityFacts ListEnumerabilityFacts ReducibilityFacts.
 From Undecidability Require Import Shared.ListAutomation Shared.Dec.
