@@ -70,7 +70,7 @@ Section DC.
 
     Lemma LS_impl_DC: DLS -> dec_R -> DC_on' R.
     Proof using a.
-        intros LS DecR _ total.
+        intros LS DecR  total.
         destruct (LS sig_empty sig_binary Σ_countable Model__A a) as [N [(h & g & Hh) [f HN]]].
         specialize (@total_sat ((fun _ => (h 42)) >> f) total ) as total'.
         apply HN in total'.

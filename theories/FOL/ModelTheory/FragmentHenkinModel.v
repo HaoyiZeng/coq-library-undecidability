@@ -58,11 +58,11 @@ Section HenkinModel.
     Definition output_theory: theory := 
         Out_T (construct_construction (input_bot (closed_theory_of_model M))).
 
-    Definition term_model M: model := 
+    (* Definition term_model M: model := 
     {|
         domain := term;
         interp' := model_bot (closed_theory_of_model M)
-    |}.
+    |}. *)
 
     Lemma Hcon_in_M: consistent class input_theory.
     Proof.
@@ -122,10 +122,9 @@ Section HenkinModel.
         at most countable. 
     *)
     Lemma countable_model: 
-        exists N: model, a_coutable_model N /\ M ≡ N.
+        exists N : interp term, M ≡ (Build_model N).
     Proof.
-        exists (term_model M).
-        split. {apply term_model_countable. }
+        exists (model_bot (closed_theory_of_model M)).
         split; intros.
         - apply (sat_closed _ p var). { assumption. }
           apply valid_T_model_bot. apply Hcon_in_M.
@@ -437,7 +436,7 @@ Section WitnessPropertyLS.
 
     Theorem completeness_LS: 
         forall M: model, (classical (interp' M)) -> inhabited M -> 
-            exists N : model, a_coutable_model N /\ M ≡ N.
+            exists N : interp term, M ≡ (Build_model N).
     Proof. intros M H []; apply countable_model; eauto. Qed.
 
     End CompletenessLS.

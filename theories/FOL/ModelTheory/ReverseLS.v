@@ -32,7 +32,7 @@ Section LSBDPBEP.
 
     Lemma LS_impl_BEP: DLS -> BEP.
     Proof.
-        intros LS A P a. destruct (LS _ _ Unary_countable (model__U P) a) as [i_N [ (phi_ & nth_ & Hphi) [h emb]]].
+        intros LS A a P. destruct (LS _ _ Unary_countable (model__U P) a) as [i_N [ (phi_ & nth_ & Hphi) [h emb]]].
         exists (fun n => h (phi_ n)).
         specialize (emb (∃ (atom tt) (cons _ ($0) 0 (nil _))) phi_) as emb'; cbn in emb'.
         intro H'. destruct emb' as [H1 [t Ht]].
@@ -43,7 +43,7 @@ Section LSBDPBEP.
 
     Lemma LS_impl_BDP: DLS -> BDP.
     Proof.
-        intros LS A P a.  destruct (LS _ _ Unary_countable (model__U P) a) as [i_N [ (phi_ & nth_ & Hphi) [h emb]]].
+        intros LS A a P.  destruct (LS _ _ Unary_countable (model__U P) a) as [i_N [ (phi_ & nth_ & Hphi) [h emb]]].
         exists (fun n => h (phi_ n)).
         specialize (emb (∀ (atom tt) (cons _ ($0) 0 (nil _))) phi_) as emb'; cbn in emb'.
         intro H'; apply emb'. intro d.
@@ -116,13 +116,13 @@ Section LS_implies_BDC.
 
     Theorem LS_impl_BDC: DLS -> BDC.
     Proof.
-        intros H X R x; eapply impl_BDC; eauto.
+        intros H X x R; eapply impl_BDC; eauto.
     Qed.
 
-    Theorem LS_CC_impl_DC: AC00 -> DLS -> DC.
+    Theorem LS_CC_impl_DC: CC_nat -> DLS -> DC.
     Proof.
         intros H1 H2%LS_impl_BDC. 
-        apply BDC_AC00_impl_DC; eauto.
+        apply BDC_CC_nat_impl_DC; eauto.
     Qed.
 
 End LS_implies_BDC.

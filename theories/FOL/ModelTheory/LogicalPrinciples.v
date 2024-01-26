@@ -41,11 +41,11 @@ Section axiom.
     Implicit Type (X: Type).
 
     Definition DC_on X :=
-        forall (R: X -> X -> Prop) , X -> total R ->
+        forall (R: X -> X -> Prop) , total R ->
             exists f: nat -> X, forall n, R (f n) (f (S n)).
 
     Definition DC_on' {X} (R: X -> X -> Prop) :=
-        X -> total R ->
+        total R ->
             exists f: nat -> X, forall n, R (f n) (f (S n)).
 
     Definition DC_root_on X (R: X -> X -> Prop) := 
@@ -53,38 +53,37 @@ Section axiom.
             exists f: nat -> X, f 0 = x /\ forall n, R (f n) (f (S n)).
 
     Definition BCC_on X := forall (R: nat -> X -> Prop),
-        X -> total R -> exists f: nat -> X, forall n, exists m, R n (f m).
+        total R -> exists f: nat -> X, forall n, exists m, R n (f m).
 
     Definition BDC_on A := forall R : A -> A -> Prop, 
-        A -> (forall x, exists y, R x y) -> 
+        (forall x, exists y, R x y) -> 
             exists f : nat -> A, total (R ∘ f).
 
     Definition BDC2_on X := forall R: X -> X -> X -> Prop,
-        X -> total_tr R -> 
-        exists f: nat -> X, forall x y, exists z, R (f x) (f y) (f z).
+        total_tr R -> 
+            exists f: nat -> X, forall x y, exists z, R (f x) (f y) (f z).
 
     Definition OBDC_on X := forall R: X -> X -> X -> Prop,
-        X -> exists f: nat -> X, 
+        exists f: nat -> X, 
             total_tr R <-> forall x y, exists z, R (f x) (f y) (f z).
 
     Definition CC_on X := forall R: nat -> X -> Prop,
-        X -> total R ->
-            exists f: nat -> X, forall n, R n (f n).
+        total R -> exists f: nat -> X, forall n, R n (f n).
 
     Definition BDP_on X := forall (P: X -> Prop),
-        X -> exists f: nat -> X,
+        exists f: nat -> X,
             (forall n, P (f n)) -> (forall x, P x).
 
     Definition BEP_on X := forall (P: X -> Prop),
-        X -> exists f: nat -> X,
+        exists f: nat -> X,
             (exists x, P x) -> (exists n, P (f n)).
 
     Definition DDC_on X := forall (R: X -> X -> Prop),
-        X -> trans R -> direct R ->
+        trans R -> direct R ->
             exists f: nat -> X, direct (R ∘ f).
 
     Definition DC__Δ := 
-        forall X (R: X -> X -> Prop), (forall x y, dec (R x y)) -> DC_on' R.
+        forall X (R: X -> X -> Prop), (forall x y, dec (R x y)) -> X -> DC_on' R.
 
     Definition PDC_root_on X (R: X -> X -> Prop) :=
         (forall x, exists y, R x y) -> forall w,
@@ -95,20 +94,20 @@ Section axiom.
 
     Definition AC_on A B := forall (R : A -> B -> Prop), total R -> exists f : A -> B, forall x, R x (f x).
 
-    Definition DC := forall X, DC_on X.
+    Definition DC := forall X, X -> DC_on X.
     Definition DC_root := forall X (R: X -> X -> Prop), DC_root_on R.
     Definition PDC_root := forall X (R: X -> X -> Prop), PDC_root_on R.
-    Definition BCC := forall X, BCC_on X.
-    Definition BDC := forall X, BDC_on X.
-    Definition BDC2 := forall X, BDC2_on X.
-    Definition OBDC := forall X, OBDC_on X.
-    Definition CC := forall X, CC_on X.
-    Definition AC00 := CC_on nat.
-    Definition BDP := forall X, BDP_on X.
-    Definition BEP := forall X, BEP_on X.
-    Definition DDC := forall X, DDC_on X.
-    Definition OAC := forall X Y, OAC_on X Y.
-    Definition AC  := forall X Y, AC_on X Y.
+    Definition BCC := forall X, X -> BCC_on X.
+    Definition BDC := forall X, X -> BDC_on X.
+    Definition BDC2 := forall X, X -> BDC2_on X.
+    Definition OBDC := forall X, X -> OBDC_on X.
+    Definition CC := forall X, X -> CC_on X.
+    Definition CC_nat := CC_on nat.
+    Definition BDP := forall X, X -> BDP_on X.
+    Definition BEP := forall X, X -> BEP_on X.
+    Definition DDC := forall X, X -> DDC_on X.
+    Definition OAC := forall X Y, X -> Y -> OAC_on X Y.
+    Definition AC  := forall X Y, X -> Y -> AC_on X Y.
 
 End axiom.
 
@@ -148,8 +147,8 @@ Proof.
     intros dc A R w total_R.
     destruct (total_R w) as [y0 Hy0]. 
     pose (a0 := exist _ y0 (@base _ R _ _ Hy0)).
-    destruct (dc { x | reachable R w x } (fun a b => R (proj1_sig a) (proj1_sig b)) ) as [f Hf].
-    - easy.
+    assert ({ x | reachable R w x }) as inst. easy.
+    destruct (dc { x | reachable R w x } inst (fun a b => R (proj1_sig a) (proj1_sig b)) ) as [f Hf].
     - intros [x Hx]. destruct (total_R x) as [y Hy]. exists (exist _ y (@step _ R w y x Hx Hy)). apply Hy.
     - destruct (f 0) as [x Hx] eqn : H0.
       destruct (@reach_reach' _ _ _ _ Hx) as (g & N & H1 & H2 & H3).
@@ -172,7 +171,7 @@ Qed.
 Theorem BDC_root_impl_BCC:
     BDC_root -> BCC.
 Proof.
-    intros DC A R _ H0.
+    intros DC A a' R H0.
     set (R' (p q:nat*A) := fst q = S (fst p) /\ R (fst p) (snd q)).
     destruct (H0 0) as (y0,Hy0).
     destruct (DC (prod nat A) ) with(R:=R') (a := (0, y0)) as (f,(Hf0,HfS)).
@@ -311,7 +310,7 @@ Section BCC_DDC_impl_BDC2.
         assert (forall n m, exists x, R (f1 n) (f1 m) x).
         firstorder.
         pose (R' n x := let '(n1, n2) := of_nat n in R (f1 n1) (f1 n2) x).
-        destruct (@BCC X R') as [f2 Hf2]. exact (f1 42).
+        destruct (@BCC X (f1 42) R') as [f2 Hf2]. 
         { intros n; unfold R'; destruct (of_nat n); firstorder. }
         exists (f1 ∪ f2); split; [intros n m|].
         destruct (Hf2 (to_nat (n, m))) as [w Hw].
@@ -370,7 +369,7 @@ Section BCC_DDC_impl_BDC2.
 
     Fact res: X -> exists f: nat -> X, (forall x y, exists z, R (f x) (f y) (f z)).
     Proof using DDC BCC total_R.
-        intros x; edestruct (@DDC _  F (fun _ => x) trans_F   direct_F) as [T HT].
+        intros x; edestruct (@DDC _  (fun _ => x) F trans_F direct_F) as [T HT].
         exists (f T).
         now apply fixpoint_F.
     Qed.
@@ -388,19 +387,22 @@ End BCC_DDC_impl_BDC2.
 
 Section BDC2_impl_BCC_DDC.
 
-    Lemma BDC2_impl_BDC: BDC2 -> BDC.
+    Lemma BDC2_impl_BDC_on A: BDC2_on A -> BDC_on A.
     Proof.
-        intros H X R x Rtot.
-        destruct (H X (fun x _ z => R x z) x) as [f Hf].
+        intros H R Rtot.
+        destruct (H (fun x _ z => R x z)) as [f Hf].
         { intros ? _; cbn. now eapply Rtot. }
         exists f. intros ?; eapply Hf.
         exact 42.
     Qed.
 
+    Lemma BDC2_impl_BDC: BDC2 -> BDC.
+    Proof. intros H A a. apply BDC2_impl_BDC_on. eauto. Qed.
+
     Lemma BDC2_impl_DDC: BDC2 -> DDC.
     Proof.
-        intros H X R x _ Rd.
-        destruct (H X (fun x y z => R x z /\ R y z) x) as [f Hf].
+        intros H X x R _ Rd.
+        destruct (H X x (fun x y z => R x z /\ R y z)) as [f Hf].
         { intros a b; eapply Rd. }
         eexists f. intros a b.
         eapply Hf.
@@ -415,9 +417,9 @@ Section OBDC_implies_BDP_BEP_BDC2.
 
     Lemma OBDC_impl_BDP_on (A: Type): OBDC_on A -> BDP_on A.
     Proof.
-        intros H P x.
+        intros H P.
         pose (R (x y z: A) := P x).
-        destruct (H R x) as [f [_ Hf]].
+        destruct (H R) as [f [_ Hf]].
         exists f; intros Hdp y.
         assert (forall x y, exists z, R (f x) (f y) (f z)) as H1.
         { intros ? ?; exists 42; unfold R; apply Hdp. }
@@ -427,9 +429,9 @@ Section OBDC_implies_BDP_BEP_BDC2.
 
     Lemma OBDC_impl_BEP_on (A: Type): OBDC_on A -> BEP_on A.
     Proof.
-        intros H  P x.
+        intros H P.
         pose (R (x y z: A) := P z).
-        destruct (H R x) as [f [Hf _]].
+        destruct (H R) as [f [Hf _]].
         exists f; intros Hdp.
         assert (forall x y, exists z, R x y z) as H1.
         { intros ? ?. unfold R. apply Hdp. }
@@ -438,8 +440,8 @@ Section OBDC_implies_BDP_BEP_BDC2.
 
     Lemma OBDC_impl_BDC2_on (X: Type): OBDC_on X -> BDC2_on X.
     Proof.
-        intros H R x Htot.
-        destruct (H R x) as [f Hf].
+        intros H R Htot.
+        destruct (H R) as [f Hf].
         rewrite Hf in Htot.
         exists f. apply Htot.
     Qed.
@@ -451,8 +453,8 @@ Section DC_impl_DDC_BCC.
 
     Lemma DC_impl_DDC: DC -> DDC.
     Proof.
-        intros DC A R a Tr H.
-        destruct (DC A R a) as [f Hf].
+        intros DC A a R Tr H.
+        destruct (DC A a R) as [f Hf].
         { intro x; destruct (H x x) as [z [Hz _]]; exists z; auto. }
         assert (forall x y, x < y -> R (f x) (f y)) as mono.
         { intros i j E.
@@ -477,12 +479,12 @@ Section DC_impl_DDC_BCC.
     Definition iter (n:nat) {A} (f:A->A) (x:A) : A :=
         nat_rect (fun _ => A) x (fun _ => f) n.
 
-    Theorem BDC_AC00_impl_DC:
-        BDC -> AC00 -> DC.
+    Theorem BDC_CC_nat_impl_DC:
+        BDC -> CC_nat -> DC.
     Proof.
-        intros BDC AC00 A R a tR. 
-        destruct (BDC A R a tR) as [f Hf].
-        destruct (AC00 (fun n m => R (f n) (f m)) 42 Hf) as [g Hg].
+        intros BDC CC_nat A a R tR. 
+        destruct (BDC A a R tR) as [f Hf].
+        destruct (CC_nat (fun n m => R (f n) (f m)) Hf) as [g Hg].
         exists (fun n => f (iter n (fun n => g n) 0)).
         intro n; cbn.
         now destruct (Hf ((iter n (fun n : nat => g n) 0))) as [[] Hg'].
@@ -493,7 +495,7 @@ Section DC_impl_DDC_BCC.
     Proof.
         intros H X R HR x0.
         destruct (HR x0) as [y0 Hy0]. pose (a0 := exist _ y0 (@base _ R _ _ Hy0)).
-        destruct (H { x | reachable R x0 x } (fun a b => R (proj1_sig a) (proj1_sig b)) a0) as [f Hf].
+        destruct (H { x | reachable R x0 x } a0 (fun a b => R (proj1_sig a) (proj1_sig b))) as [f Hf].
         -  intros [x Hx]. destruct (HR x) as [y Hy]. exists (exist _ y (@step _ R x0 y x Hx Hy)). apply Hy.
         - destruct (f 0) as [x Hx] eqn : H0.
             destruct (@reach_reach' _ _ _ _ Hx) as (g & N & H1 & H2 & H3).
@@ -521,16 +523,16 @@ Section DC_impl_DDC_BCC.
 
     Lemma AC_impl_DC: AC -> DC.
     Proof.
-      intros ac X R x HR. destruct (ac _ _ R HR) as [f Hf].
+      intros ac X x R HR. destruct (ac _  _ x x R HR) as [f Hf].
       exists (fun n => iter n f x). intros n. apply Hf.
     Qed.
 
     Theorem DC_impl_CC: DC_root -> CC.
     Proof.
-    intros dc A R a HR.
+    intros dc A a R HR.
     destruct (HR 0) as [a0 HA].
     unshelve edestruct (dc (prod nat A) (fun p q => fst q = S (fst p) /\ R (fst p) (snd q))) as [f H].
-    - exact (0, a0).
+    - exact (0, a0). 
     - intros []. cbn. destruct (HR n) as [a' HA']. exists (S n, a'). cbn. tauto.
     - assert (HF : forall n, fst (f n) = n).
         { induction n. now rewrite (proj1 H). rewrite <- IHn at 2. apply H. }
@@ -546,19 +548,19 @@ Section DC_impl_DDC_BCC.
     Qed.
 
 
-    Theorem CC_impl_AC00: CC -> AC00.
+    Theorem CC_impl_CC_nat: CC -> CC_nat.
     Proof.
-        intros H; apply H.
+        intros H; apply H. exact 42.
     Qed.
 
-    Lemma CC_iff_BCC_AC00: CC <-> BCC /\ AC00.
+    Lemma CC_iff_BCC_CC_nat: CC <-> BCC /\ CC_nat.
     Proof.
         split.
-        - intros CC; split; [apply CC_impl_BCC| apply CC_impl_AC00]; easy.
-        - intros [bcc ac00] A R a totalR.
-          destruct (bcc A R a totalR) as [f Pf].
-          unfold AC00, CC_on in ac00.
-          destruct (ac00 (fun x y => R x (f y))) as [g Pg]. exact 42.
+        - intros CC; split; [apply CC_impl_BCC| apply CC_impl_CC_nat]; easy.
+        - intros [bcc CC_nat] A a R totalR.
+          destruct (bcc A a R totalR) as [f Pf].
+          unfold CC_on in CC_nat.
+          destruct (CC_nat (fun x y => R x (f y))) as [g Pg]. 
           { intros x; apply Pf. }
          now exists (fun n => f (g n)).
     Qed.
@@ -586,7 +588,7 @@ Section LBDC_VBDC.
 
     Fact LBDC_impl_BCC: LBDC -> BCC.
     Proof.
-        intros BDC_list A R a total_R.
+        intros BDC_list A a R total_R.
         pose (R' (l: list A) (a: A) := R (length l) (a)).
         destruct (BDC_list _ R') as [g Hg].
         - intro v; exact (total_R (length v)).
@@ -662,7 +664,7 @@ Section LBDC_VBDC.
 
     Lemma LBDC_impl_BDC2: LBDC -> BDC2.
     Proof.
-        intros ldc A R a HR.
+        intros ldc A a R HR.
         pose (R' := fun l y => match l with | a::b::_ => R a b y | _ => True end).
         destruct (ldc _ R') as [f Hf].
         - intros [|x [|y l]]; cbn; try now exists a.
@@ -696,12 +698,12 @@ Section Result.
         - intros [H1 H2]. now apply res_BDC2.
     Qed.
 
-    Theorem DC_iff_BDC_AC00: 
-        DC <-> BDC /\ AC00.
+    Theorem DC_iff_BDC_CC_nat: 
+        DC <-> BDC /\ CC_nat.
     Proof.
         split; intros H.
-        - split; [now apply DC_impl_BDC |now apply CC_impl_AC00, DC_impl_CC, DC_impl_DC_root].
-        - now destruct H; apply BDC_AC00_impl_DC; [|easy].
+        - split; [now apply DC_impl_BDC |now apply CC_impl_CC_nat, DC_impl_CC, DC_impl_DC_root].
+        - now destruct H; apply BDC_CC_nat_impl_DC; [|easy].
     Qed.
 
     Theorem DC_impl_BDC2: 
@@ -713,16 +715,16 @@ Section Result.
     Qed.
     
 
-    Theorem DC_iff_BDC2_AC00:
-        DC <-> BDC2 /\ AC00.
+    Theorem DC_iff_BDC2_CC_nat:
+        DC <-> BDC2 /\ CC_nat.
     Proof.
         split.
         - intros H; split.
           rewrite BDC2_iff_DDC_BCC; split.
           now apply DC_impl_DDC.
           now apply CC_impl_BCC, DC_impl_CC, DC_impl_DC_root.
-          now apply CC_impl_AC00, DC_impl_CC, DC_impl_DC_root.
-        - intros [H1 H2]. rewrite DC_iff_BDC_AC00; split; [|easy].
+          now apply CC_impl_CC_nat, DC_impl_CC, DC_impl_DC_root.
+        - intros [H1 H2]. rewrite DC_iff_BDC_CC_nat; split; [|easy].
           now apply BDC2_impl_BDC.
     Qed.
 
@@ -734,54 +736,55 @@ Section Result.
         - intros H; split.
         now apply DC_impl_DDC.
         now apply DC_impl_CC, DC_impl_DC_root.
-        - intros [H1 H2]. rewrite DC_iff_BDC_AC00; split.
+        - intros [H1 H2]. rewrite DC_iff_BDC_CC_nat; split.
         specialize (CC_impl_BCC H2) as H3.
         apply BDC2_impl_BDC. now rewrite BDC2_iff_DDC_BCC.
-        now apply CC_impl_AC00.  
+        now apply CC_impl_CC_nat.  
     Qed.
 
     Fact CC_impl_BCC_on (A: Type): CC_on A -> BCC_on A.
     Proof.
-        intros H R a Htot.
-        destruct (H R a Htot) as [f Hf].
+        intros H R Htot.
+        destruct (H R Htot) as [f Hf].
         eexists f; intro n; exists n.
         eauto.
     Qed.
 
     Fact DC_impl_BDC_on (A: Type): DC_on A -> BDC_on A.
     Proof.
-        intros H R a Htot.
-        destruct (H R a Htot) as [f Hf].
+        intros H R Htot.
+        destruct (H R Htot) as [f Hf].
         exists f; intros x; exists (S x).
         unfold consf; eauto.
     Qed.
 
-    Fact BDC2_impl_BDC_on (A: Type): BDC2_on A -> BDC_on A. 
-    Proof.
-        intros H R a Htot.
-        destruct (H (fun x _ z => R x z) a) as [f Hf].
-        { intros x _; eauto. }
-        exists f. intros x. 
-        destruct (Hf x 42) as [w Hw]; eauto.
-    Qed.
 
 End Result.
 
+Section DP_EP.
+
+    Definition DP_on (X: Type) := forall P: X -> Prop, 
+        exists x, P x -> (forall x, P x).
+
+    Definition EP_on (X: Type) := forall P: X -> Prop,
+        exists x, (exists x, P x) -> P x.
+
+End DP_EP.
 
 Section BDP_BEP_scheme.
 
     Definition BDP_scheme (domain range: Type) :=
-        forall P: domain -> Prop, domain -> exists f: range -> domain,
+        forall P: domain -> Prop, exists f: range -> domain,
             (forall n: range, P (f n)) -> forall x, P x.
 
     Definition BEP_scheme (domain range: Type) :=
-        forall P: domain -> Prop, domain -> exists f: range -> domain,
+        forall P: domain -> Prop, exists f: range -> domain,
             (exists x, P x) -> (exists m, P (f m)).
 
 End BDP_BEP_scheme.
 
-Notation BDP_to A := (forall domain, @BDP_scheme domain A).
-Notation BEP_to A := (forall domain, @BEP_scheme domain A).
+Notation BDP_to A := (forall domain, domain -> @BDP_scheme domain A).
+Notation BEP_to A := (forall domain, domain -> @BEP_scheme domain A).
 
 Notation BDP' := (@BDP_to nat).
 Notation BEP' := (@BEP_to nat).
@@ -795,41 +798,39 @@ Notation BEP₁ := (@BEP_scheme nat unit).
 Section scheme_facts_basic.
 
     Goal forall A, BDP_scheme A A.
-    Proof. intros A P a. exists (fun n => n). eauto. Qed. 
+    Proof. intros A P. exists (fun n => n). eauto. Qed. 
 
     Goal forall A, BEP_scheme A A.
-    Proof. intros A P a. exists (fun n => n). eauto. Qed.
+    Proof. intros A P. exists (fun n => n). eauto. Qed.
 
     Goal forall A B C, 
-        inhabited A -> inhabited B -> inhabited C -> 
             BDP_scheme A B -> BDP_scheme B C -> BDP_scheme A C.
-    Proof. intros A B C [a] [b] [c] H1 H2.
-           intros P a'. destruct (H1 P a) as [f Hf].
-           destruct (H2 (fun n => P (f n)) b) as [h Hh].
+    Proof. intros A B C H1 H2.
+           intros P . destruct (H1 P) as [f Hf].
+           destruct (H2 (fun n => P (f n))) as [h Hh].
            exists (fun a => f (h a)). firstorder.
     Qed.
 
     Goal forall A B C, 
-        inhabited A -> inhabited B -> inhabited C -> 
             BEP_scheme A B -> BEP_scheme B C -> BEP_scheme A C.
-    Proof. intros A B C [a] [b] [c] H1 H2.
-        intros P a'. destruct (H1 P a) as [f Hf].
-        destruct (H2 (fun n => P (f n)) b) as [h Hh].
+    Proof. intros A B C H1 H2.
+        intros P. destruct (H1 P) as [f Hf].
+        destruct (H2 (fun n => P (f n))) as [h Hh].
         exists (fun a => f (h a)). firstorder.
     Qed.
 
     Goal forall A B, inhabited B -> BDP_scheme A unit -> BDP_scheme A B.
     Proof.
-        intros A B [b] H P a.
-        destruct (H P a) as [f Hf].
+        intros A B [b] H  P.
+        destruct (H P) as [f Hf].
         exists (fun _ => f tt).
         intros. apply Hf. intros []. now apply H0.
     Qed.
 
     Goal forall A B, inhabited B -> BEP_scheme A unit -> BEP_scheme A B.
     Proof.
-        intros A B [b] H P a.
-        destruct (H P a) as [f Hf].
+        intros A B [b] H P.
+        destruct (H P) as [f Hf].
         exists (fun _ => f tt).
         intros. apply Hf in H0. exists b. now destruct H0 as [[] H0].
     Qed.
@@ -841,32 +842,30 @@ Section scheme_facts_1.
     Definition WPFP := (forall b: nat -> bool, exists a: nat -> bool, (exists n, b n = false) <-> (forall n, a n = true)).
     Definition LEM := (forall P, P \/ ~ P).
     Definition LPO := (forall f : nat -> bool, (forall x, f x = false) \/ (exists x, f x = true)).
-    Definition IP_on A := forall (P:A -> Prop) (Q:Prop), inhabited A -> (Q -> exists x, P x) -> exists x, Q -> P x.
-    Definition IP := forall A, IP_on A.
-    Definition BIP := forall (A:Type) (P:A -> Prop) (Q:Prop), inhabited A -> (Q -> exists x, P x) -> exists (f: nat -> A), Q -> (exists m, P (f m)).
+    Definition IP_on A := forall (P:A -> Prop) (Q:Prop), (Q -> exists x, P x) -> exists x, Q -> P x.
+    Definition IP := forall A, inhabited A -> IP_on A.
+    Definition BIP_on (A:Type) (B: Type) := forall (P:A -> Prop) (Q:Prop),(Q -> exists x, P x) -> exists (f: B -> A), Q -> (exists m, P (f m)).
+    Definition BIP := forall (A:Type) (P:A -> Prop) (Q:Prop),  inhabited A -> BIP_on A nat.
     Definition KS := forall P, exists f : nat -> bool, P <-> exists n, f n = true.
-    Definition KS' := forall P, exists f : nat -> bool, ~ P <-> forall n, f n = true.
+    Definition KS' :=   forall P : Prop, exists f : nat -> bool, (P -> ~ forall n, f n = false) /\ ((exists n, f n = true) -> P).
     Definition ODC := forall X (R: X -> X -> Prop) , X -> exists f: nat -> X, total R -> forall n, R (f n) (f (S n)).
 
     Lemma BDP_impl_KS':
         BDP -> KS'.
     Proof.
         intros dp P.
-        destruct (dp (option P) 
-            (fun x => match x with Some x => ~ P | _ => True end)) as [f H].
-        exact None.
-        exists (fun n => if f n then false else true). split.
-        - intros HP. intros n. destruct (f n); tauto.
-        - intros H'. intros HP.  refine (H _ (Some HP) _); try tauto.
-            intros n. specialize (H' n). destruct (f n); try tauto. discriminate.
-    Qed.
+        destruct (dp (option P) None (fun x => match x with Some x => ~ P | _ => True end)) as [f H].
+        exists (fun n => if f n then true else false). split.
+        - intros HP. intros H'. refine (H _ (Some HP) HP).
+          intros n. specialize (H' n). destruct f; try discriminate. exact I.
+        - intros [n Hn]. destruct (f n); try tauto. discriminate.
+      Qed.
 
     Lemma BEP_KS :
         BEP -> KS.
     Proof.
         intros dp P.
-        destruct (dp (option P) (fun x => match x with Some x => P | _ => False end)) as [f H].
-        exact None.
+        destruct (dp (option P) None (fun x => match x with Some x => P | _ => False end)) as [f H].
         exists (fun n => if f n then true else false). split.
         - intros HP. destruct H as [n Hn].
             + exists (Some HP). apply HP.
@@ -881,22 +880,22 @@ Section scheme_facts_2.
         DP <-> (forall A (P: A -> Prop), A -> exists x, P x -> forall x, P x).
     Proof.
         split; intros.
-        - destruct (H A P); try easy.
+        - destruct (H A X P); try easy.
             exists (x tt); intro h.
             apply H0. now intros [].
-        - intros P a. destruct (H domain P); try easy.
+        - intros P. destruct (H domain P); try easy.
             exists (fun _ => x).
-            intros; now apply H0, H1.
+            intros; apply H0, H1. exact tt.
     Qed.
 
     Fact EP_is_EP: 
         EP <-> (forall A (P : A -> Prop), A -> exists x, (exists x, P x) -> P x).
     Proof.
         split; intros.
-        - destruct (H A P); try easy.
+        - destruct (H A X P); try easy.
             exists (x tt); intro h.
             destruct H0 as [[] Pu]; easy. 
-        - intros P a. destruct (H domain P); try easy.
+        - intros P. destruct (H domain P); try easy.
             exists (fun _ => x).
             intros. exists tt. now apply H0, H1.
     Qed.
@@ -913,7 +912,7 @@ Section scheme_facts_2.
     Lemma DP_iff_LEM : DP <-> LEM.
     Proof.
         split. apply DP_impl_LEM.
-        intros H X P x.
+        intros H X x P.
         destruct (H (exists x, ~ P x)) as [L|R].
         - destruct L as [w Pw].
           exists (fun _ => w). intros Px. 
@@ -926,16 +925,16 @@ Section scheme_facts_2.
     Fact BDP_BDP₁_iff_DP: BDP /\ BDP₁ <-> DP.
     Proof.
         split.
-        - intros [H1 H2] X P x.
-          destruct (H1 _ P x) as [f Hf].
-          destruct (H2 (fun n => P (f n)) 42) as [f' Hf'].
+        - intros [H1 H2] X x P.
+          destruct (H1 _ x P) as [f Hf].
+          destruct (H2 (fun n => P (f n))) as [f' Hf'].
           exists (fun n => f (f' tt)).
           intros. apply Hf. intros. apply Hf'.
           intros []. apply H. exact tt.
         - intros H; split; [|apply H].
-          intros X P x. destruct (H X P x) as [f Hf].
+          intros X x P. destruct (H X x P) as [f Hf].
           exists (fun n => f tt). intros.
-          apply Hf. intros []. apply H0. exact 42.
+          apply Hf. intros []. apply H0. all: exact 42.
     Qed.
 
     Lemma BDP_BDP₁_iff_LEM: (BDP /\ BDP₁) <-> LEM.
@@ -960,7 +959,7 @@ Section scheme_facts_2.
     Lemma EP_iff_LEM: EP <-> LEM.
     Proof.
         split. apply EP_impl_LEM.
-        intros H X P x.
+        intros H X x P.
         destruct (H (exists x, P x)) as [[w Pw]|R].
         - exists (fun _ => w). intros _. now exists tt. 
         - exists (fun _ => x). intros [w Pw].
@@ -971,9 +970,9 @@ Section scheme_facts_2.
     Fact BEP_BEP₁_iff_EP: BEP /\ BEP₁ <-> EP.
     Proof.
         split.
-        - intros [H1 H2] X P x.
-            destruct (H1 _ P x) as [f Hf].
-            destruct (H2 (fun n => P (f n)) 42) as [f' Hf'].
+        - intros [H1 H2] X x P .
+            destruct (H1 _ x P) as [f Hf].
+            destruct (H2 (fun n => P (f n))) as [f' Hf'].
             exists (fun n => f (f' tt)).
             intros. apply Hf, Hf' in H. destruct H as [[] Hk].
             now exists tt.
@@ -981,7 +980,7 @@ Section scheme_facts_2.
             intros X P x. destruct (H X P x) as [f Hf].
             exists (fun n => f tt). intros.
             apply Hf in H0. destruct H0 as [[] H0].
-            now exists 42.
+            now exists 42. exact 42.
     Qed.
 
     Lemma BEP_BEP₁_iff_LEM: (BEP /\ BEP₁) <-> LEM.
@@ -1000,8 +999,7 @@ Section scheme_facts_2.
         BDP -> MP -> LEM.
     Proof.
         intros dp mp P.
-        destruct (dp (option (P \/ ~ P)) (fun x => match x with Some x => ~ (P \/ ~ P) | _ => True end)) as [f H].
-        exact None.
+        destruct (dp (option (P \/ ~ P)) None (fun x => match x with Some x => ~ (P \/ ~ P) | _ => True end)) as [f H].
         destruct (mp (fun n => if f n then true else false)) as [n Hn].
         - intros H'. assert (H1 : ~ ~ (P \/ ~ P)) by tauto. apply H1. intros H2.
             refine (H _ (Some H2) H2). intros n. destruct f eqn: Hf; try exact I.
@@ -1013,8 +1011,7 @@ Section scheme_facts_2.
         BEP -> MP -> forall P, ~ ~ P -> P.
     Proof.
         intros dp mp P HP.
-        destruct (dp (option P) (fun x => match x with Some x => P | _ => False end)) as [f H].
-        exact None.
+        destruct (dp (option P) None (fun x => match x with Some x => P | _ => False end)) as [f H].
         destruct (mp (fun n => if f n then true else false)) as [x Hx].
         - intros H'. apply HP. intros HP'. apply H'. destruct H as [n Hn].
             + exists (Some HP'). apply HP'.
@@ -1038,37 +1035,37 @@ Section scheme_facts_2.
     Lemma BDP_LPO_impl_LEM : BDP -> LPO -> LEM.
     Proof.
         intros dp lpo P.
-        destruct (dp (option (P \/ ~ P)) (fun x => match x with Some x => ~ P | _ => True end) None) as [f H].
+        destruct (dp (option (P \/ ~ P)) None (fun x => match x with Some x => ~ P | _ => True end)) as [f H].
         destruct (lpo (fun n => if f n then true else false)) as [Hf|[x Hx]].
         - right. intros HP. refine (H _ (Some (or_introl HP)) HP).
             intros n. specialize (Hf n). destruct (f n); try discriminate. trivial.
         - destruct (f x); try discriminate. trivial.
     Qed.
 
-    Lemma BDP1_impl_LPO: BDP₁ -> LPO.
+    Lemma DP_nat_impl_LPO: DP_on nat -> LPO.
     Proof.
         intros dp f. 
         specialize (dp (fun n => f n = false)).
-        destruct dp; [exact 42|].
-        destruct (f (x tt)) eqn: E.
-        - right. now exists (x tt).
-        - left.  apply H. now intros [].
+        destruct dp.
+        destruct (f x) eqn: E.
+        - right. now exists x.
+        - left. now apply H.
     Qed.
 
-    Lemma BEP1_impl_LPO: BEP₁ -> LPO.
+    Lemma EP_nat_impl_LPO: EP_on nat -> LPO.
     Proof.
         intros H f. destruct (H (fun n => f n = true)) as [x Hx].
-        exact 42. destruct (f (x tt)) eqn: Hf.
-        - right. now exists (x tt).
+        destruct (f x) eqn: Hf.
+        - right. now exists x.
         - left. intros n. destruct (f n) eqn: Hn; trivial.
-          destruct Hx as [[] Hx]. now exists n. congruence.
+          symmetry. apply Hx. now exists n.
     Qed.
 
     Fact EP_impl_IP: EP -> IP.
     Proof.
         intros.
-        intros A P Q [] HP.
-        destruct (H A P X). 
+        intros A [a] P Q HP.
+        destruct (H A a P). 
         exists (x tt); intros Q'%HP.
         destruct H0 as [[] P']; easy.
     Qed.
@@ -1076,12 +1073,9 @@ Section scheme_facts_2.
     Fact IP_iff_EP: IP <-> EP.
     Proof.
         split; [|apply EP_impl_IP].
-        intros IP A P.
-        intros IA.
-        destruct (IP A P (exists x, P x)).
-        now constructor.
-        easy.
-        exists (fun v => x).
+        intros IP A IA. intros P.
+        destruct (IP A (inhabits IA) P (exists x, P x)).
+        easy. exists (fun v => x).
         intros P'. exists tt. now apply H.
     Qed.
 
@@ -1100,19 +1094,19 @@ Section scheme_facts_2.
     Qed.
     
 
-    Fact BEP_impl_BIP: BEP -> BIP.
+    Fact BEP_impl_BIP A B: BEP_scheme A B -> BIP_on A B.
     Proof.
-        intros BDP' A P Q [] HP.
-        destruct (BDP' A P X).
+        intros BDP' P Q  HP.
+        destruct (BDP' P).
         exists x; intros Q'%HP.
         now apply H.
     Qed.
     
-    Fact BIP_iff_BEP: BIP <-> BEP.
+    Fact BIP_iff_BEP A B: BIP_on A B <-> BEP_scheme A B.
     Proof.
         split; [|apply BEP_impl_BIP].
-        intros BIP A P a.
-        destruct (BIP A P (exists x, P x)). { now constructor. }
+        intros BIP P.
+        destruct (BIP P (exists x, P x)).
         easy. now exists x.
     Qed.
 
@@ -1121,7 +1115,7 @@ Section scheme_facts_2.
         intros DC IP A R w.
         specialize (DC_impl_DC_root DC) as DC_r.
         apply IP. constructor; exact (fun _ => w).
-        intros DC'%(DC A R); eauto.
+        intros DC'%(DC A w R); eauto.
     Qed.
 
 End scheme_facts_2.
@@ -1134,14 +1128,14 @@ Section AboutOAC.
         intros H. split.
         - intros R HR. destruct (H R) as [f Hf]. exists f. apply Hf, HR.
         - intros P Q H1. destruct (H (fun _ y => P y)) as [f Hf].
-            exists (f x). intros HQ. apply Hf. intros _. apply H0, HQ.
+            exists (f x). intros HQ. apply Hf. intros _. apply H1, HQ.
     Qed.
 
     Lemma IP_AC_impl_OAC A B (y : B): 
         AC_on A B -> IP_on B -> OAC_on A B.
     Proof.
         intros H1 H2 R. destruct (H1 (fun x y => (exists y, R x y) -> R x y)) as [f Hf].
-        - intros x. apply H2. econstructor. all: trivial. 
+        - intros x. apply H2. easy. 
         - exists f. intros H. intros x. apply (Hf x (H x)).
     Qed.
 
