@@ -503,7 +503,7 @@ Section FixedModel.
                 exists f: (form -> B),  forall n, R n (f n).
         Proof.
             intros B R b totalR.
-            destruct (@cc B (fun n => R (phi_ n))) as [g Pg]. exact b.
+            destruct (@cc B b (fun n => R (phi_ n))) as [g Pg]. 
             intro x. apply (totalR (phi_ x)).
             unshelve eexists. intros f; exact (g (nth_ f)). 
             intro n. cbn. specialize (Pg (nth_ n)).
@@ -515,8 +515,8 @@ Section FixedModel.
         Proof.
             intros.
             destruct (@CC_term M (fun phi w => M ⊨[w .: ρ] phi -> M ⊨[ρ] (∀ phi)) nonempty) as [F PF].
-            - intro φ; destruct (dp (fun w => (M ⊨[w.:ρ] φ ))) as [w Hw].
-              exact (ρ O). exists (w tt); intro Hx; cbn; apply Hw; now intros [].
+            - intro φ; destruct (dp nonempty (fun w => (M ⊨[w.:ρ] φ ))) as [w Hw].
+              exists (w tt); intro Hx; cbn; apply Hw; now intros [].
             - exists (fun n: nat => F (phi_ n)).
               intro φ; specialize (PF φ).
               exists (nth_ φ); rewrite (Hphi φ). easy.
@@ -527,7 +527,7 @@ Section FixedModel.
         Proof.
             intros.
             destruct (@CC_term M (fun phi w => M ⊨[ρ] (∃ phi) -> M ⊨[w .: ρ] phi) nonempty) as [F PF].
-            - intro φ; destruct (ep (fun w => (M ⊨[w.:ρ] φ )) nonempty) as [w Hw].
+            - intro φ; destruct (ep nonempty (fun w => (M ⊨[w.:ρ] φ ))) as [w Hw].
               exists (w tt). intros Hx%Hw. now destruct Hx as [[] Hx].
             - exists (fun n: nat => F (phi_ n)).
               intro φ; specialize (PF φ).
@@ -577,7 +577,7 @@ Section FixedModel.
                 exists f: (nat -> B),  forall n, exists w, R n (f w).
         Proof.
             intros B R b totalR.
-            destruct (@bcc B (fun n => R (phi_ n))) as [g Pg]. exact b.
+            destruct (@bcc B b (fun n => R (phi_ n))) as [g Pg].
             intro x. apply (totalR (phi_ x)).
             exists g. intro n. 
             specialize (Pg (nth_ n)).
@@ -590,8 +590,8 @@ Section FixedModel.
             intros ρ.
             destruct (@BCC_term (nat -> M) (fun phi h => (forall w, M ⊨[(h w) .: ρ] phi) -> M ⊨[ρ] (∀ phi))) as [F PF].
             { exact (fun n => nonempty). }
-            - intro φ; destruct (bdp (fun w => (M ⊨[w.:ρ] φ ))) as [w Hw].
-            exact (ρ (nth_ φ)). exists w; intro Hx; cbn; now apply Hw.
+            - intro φ; destruct (bdp (ρ (nth_ φ))(fun w => (M ⊨[w.:ρ] φ ))) as [w Hw].
+            exists w; intro Hx; cbn; now apply Hw.
             - exists (fun (n: nat) => F (π__1 n) (π__2 n)).
             intro φ; specialize (PF φ).
             intro H'. destruct PF as [n PF]; apply PF.
@@ -605,8 +605,8 @@ Section FixedModel.
             intros ρ.
             destruct (@BCC_term (nat -> M) (fun phi h =>  M ⊨[ρ] (∃ phi) -> (exists w, M ⊨[(h w) .: ρ] phi))) as [F PF].
             { exact (fun n => nonempty). }
-            - intro φ; destruct (bep (fun w => (M ⊨[w.:ρ] φ ))) as [w Hw].
-            exact (ρ O). exists w; intro Hx; cbn; now apply Hw.
+            - intro φ; destruct (bep (ρ 0) (fun w => (M ⊨[w.:ρ] φ ))) as [w Hw].
+            exists w; intro Hx; cbn; now apply Hw.
             - exists (fun (n: nat) => F (π__1 n) (π__2 n)).
             intro φ; specialize (PF φ).
             intro H'. destruct PF as [n PF]. 
@@ -671,12 +671,12 @@ End FixedModel.
 Section Result.
 
     Theorem LS_downward_with_DC_LEM: 
-       LEM -> DC -> SyntaticLS.
+       LEM -> DC -> DLS.
     Proof.
-        intros LEM DC Σ_f Σ_p C_Σ M m.
+        intros LEM DC. apply LS_correct.
+        intros Σ_f Σ_p C_Σ M m.
         destruct (enum_form C_Σ) as (phi_ & nth_ & Hphi).
-        destruct (DC _ (@henkin_next _ _ M)) as [F PF]; eauto.
-        { exact (fun n => m). }
+        destruct (DC _ (fun n => m) (@henkin_next _ _ M)) as [F PF]; eauto.
         { intros A. unshelve eapply dp_Next_env; eauto.
           now rewrite DP_iff_LEM.
           now rewrite EP_iff_LEM.
@@ -691,14 +691,14 @@ Section Result.
     Qed.
 
     Theorem LS_downward_with_BDP_BEP_DC:
-        BDP -> BEP -> DC -> SyntaticLS.
+        BDP -> BEP -> DC -> DLS.
     Proof.
-        intros BDP BEP DC Σ_f Σ_p C_Σ M m.
+        intros BDP BEP DC. apply LS_correct.
+        intros Σ_f Σ_p C_Σ M m.
         destruct (enum_form C_Σ) as (phi_ & nth_ & Hphi).
         assert (BCC: BCC). eapply BDC_impl_BCC.
         now apply DC_impl_BDC.
-        destruct (DC _ (@blurred_henkin_next _ _ M)) as [F PF]; eauto.
-        { exact (fun n => m). }
+        destruct (DC _ (fun n => m) (@blurred_henkin_next _ _ M)) as [F PF]; eauto.
         { intros A. unshelve eapply Next_env; eauto. }
         pose (ι_Fixed_point PF) as Succ.
         specialize Blurred_Henkin_LS with (phi_ := phi_) as [N [h Ph]].
@@ -710,12 +710,12 @@ Section Result.
 
 
     Theorem LS_downward:
-        BDP -> BEP -> DDC -> BCC -> SyntaticLS.
+        BDP -> BEP -> DDC -> BCC -> DLS.
     Proof.
-        intros BDP BEP DDC BCC Σ_f Σ_p C_Σ M m.
+        intros BDP BEP DDC BCC. apply LS_correct.
+        intros Σ_f Σ_p C_Σ M m.
         destruct (enum_form C_Σ) as (phi_ & nth_ & Hphi).
-        destruct (DDC _ (@blurred_henkin_next _ _ M)) as [F PF]; eauto.
-        { exact (fun n => m). }
+        destruct (DDC _ (fun n => m) (@blurred_henkin_next _ _ M)) as [F PF]; eauto.
         { intros x y z Hx Hy. apply (trans_succ Hx Hy). }
         { intros A B. unshelve eapply directed_Henkin_env; eauto. }
         pose (γ_Fixed_point PF) as Succ.
@@ -726,14 +726,14 @@ Section Result.
         exists N, h. eapply Ph.
     Qed.
 
-    Theorem LS_downward':  OBDC -> SyntaticLS.
+    Theorem LS_downward':  OBDC -> DLS.
     Proof.
         intros ? ? H_ H1. assert BDC2 as H2.
-        {intro A; eapply OBDC_impl_BDC2_on; eauto. }
+        {intros A a; eapply OBDC_impl_BDC2_on; eauto. }
         rewrite BDC2_iff_DDC_BCC in H2. destruct H2.
         eapply LS_downward; eauto.
-        - intro A. eapply (@OBDC_impl_BDP_on A); eauto.
-        - intro A. eapply (@OBDC_impl_BEP_on A); eauto.
+        - intros A a. eapply (@OBDC_impl_BDP_on A); eauto.
+        - intros A a. eapply (@OBDC_impl_BEP_on A); eauto.
     Qed.
 
 End Result.
