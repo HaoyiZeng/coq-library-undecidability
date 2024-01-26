@@ -3,7 +3,7 @@ From Coq Require Import Arith Lia List Program.Equality.
 From Undecidability.FOL Require Import FullSyntax Heyting.Heyting.
 Import ListNotations.
 
-(** ** Heyting Soundness *)
+(** Heyting Soundness *)
 
 Section Soundness.
 

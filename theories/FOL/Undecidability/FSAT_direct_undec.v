@@ -1,4 +1,4 @@
-(** ** Trakhtenbrot's Theorem *)
+(** Trakhtenbrot's Theorem *)
 
 From Undecidability.PCP Require Import PCP_undec.
 From Undecidability.Synthetic Require Import Undecidability ReducibilityFacts.

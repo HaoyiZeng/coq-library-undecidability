@@ -1,5 +1,5 @@
-(** * Incompleteness *)
-(** ** Church's Thesis *)
+(* Incompleteness *)
+(** Church's Thesis *)
 
 From Undecidability.FOL.Incompleteness Require Import utils.
 
