@@ -19,6 +19,7 @@ So we have the following pictorial representation:
 
 *)
 
+
 Require Import Undecidability.FOL.ModelTheory.FragmentCore.
 Require Import Coq.Program.Equality.
 Local Set Implicit Arguments.

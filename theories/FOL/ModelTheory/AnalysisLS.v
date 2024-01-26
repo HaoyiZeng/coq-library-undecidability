@@ -3,9 +3,11 @@ Require Import Undecidability.FOL.ModelTheory.HenkinEnv.
 Require Import Undecidability.FOL.ModelTheory.ReverseLS. 
 Require Import Undecidability.FOL.ModelTheory.Core.
 
+(** * Decomposition of DLS *)
+
 Section LSiffDC.
 
-    Corollary LS_iff_DC_under_AC00_LEM: 
+    Corollary LS_iff_DC_under_CC_nat_LEM: 
         CC_nat -> LEM -> DLS <-> DC.
     Proof.
         intros H1 H2; split.
@@ -13,7 +15,7 @@ Section LSiffDC.
         - intros DC. eapply LS_downward_with_DC_LEM; eauto.
     Qed.
 
-    Corollary LS_iff_DC_BDP_BEP_under_AC00:
+    Corollary LS_iff_DC_BDP_BEP_under_CC_nat:
         CC_nat -> DLS <-> DC /\ BDP /\ BEP.
     Proof.
         intros H1; split.

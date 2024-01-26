@@ -4,6 +4,8 @@ Require Import Coq.Program.Equality.
 Require Import Vector.
 Import VectorNotations.
 
+(** * Trivial Proof of Upward Löwenhim-Skolem Theorem *)
+
 Section upward.
 
     Variables (N: Type) (n: N).

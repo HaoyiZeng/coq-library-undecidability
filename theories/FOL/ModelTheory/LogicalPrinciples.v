@@ -36,6 +36,8 @@ Notation logical_decidable p := (forall x, logical_dec (p x)).
 Notation decider p := (forall x, dec (p x)).
 Notation "R ∘ f" := (consf R f) (at level 30).
 
+(** * Logical Principles *)
+
 Section axiom.
 
     Implicit Type (X: Type).
@@ -821,9 +823,9 @@ Section scheme_facts_basic.
 
     Goal forall A B, inhabited B -> BDP_scheme A unit -> BDP_scheme A B.
     Proof.
-        intros A B [b] H  P.
+        intros A B [b] H P.
         destruct (H P) as [f Hf].
-        exists (fun _ => f tt).
+        exists (fun _ => f tt). 
         intros. apply Hf. intros []. now apply H0.
     Qed.
 

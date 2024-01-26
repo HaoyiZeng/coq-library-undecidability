@@ -11,6 +11,8 @@ Open Scope modelNotation.
 
 Notation vec := t.
 
+(** * Definition of Model Theory *)
+
 Section model.
     Context {Σ_funcs : funcs_signature}.
     Context {Σ_preds : preds_signature}.

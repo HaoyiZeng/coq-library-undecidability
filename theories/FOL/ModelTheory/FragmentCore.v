@@ -6,6 +6,9 @@ Local Set Implicit Arguments.
 (* Local Unset Strict Implicit. *)
 
 
+(** * Definition of Model Theory (Negative Fragment) *)
+
+
 Require Export Vector.
 
 Local Set Implicit Arguments.

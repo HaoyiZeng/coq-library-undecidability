@@ -5,6 +5,8 @@ Require Import Undecidability.FOL.ModelTheory.Core.
 Require Import Program.Equality Vectors.VectorDef.
 Require Import Coq.Arith.Peano_dec.
 
+(** * Reverse Analysis *)
+
 Section LSBDPBEP.
 
     Instance sig_unary : preds_signature | 0 :=

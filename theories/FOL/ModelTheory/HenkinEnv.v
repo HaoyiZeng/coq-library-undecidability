@@ -4,6 +4,8 @@ Require Import Undecidability.FOL.ModelTheory.DCPre.
 Require Import Undecidability.FOL.ModelTheory.ConstructiveLS.
 Require Import Arith Lia PeanoNat Peano_dec.
 
+(** * Construction of Henkin Environment *)
+
 Section Incl_im.
     Variables A B C: Type.
     Definition im_sub (ρ: A -> C) (ρ': B -> C)  := forall x, exists y, ρ x = ρ' y.

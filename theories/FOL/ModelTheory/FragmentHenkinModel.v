@@ -3,6 +3,8 @@ Require Import Undecidability.FOL.Completeness.TarskiCompleteness.
 Require Import Undecidability.FOL.ModelTheory.FragmentCore.
 Local Set Implicit Arguments.
 
+(** * Henkin Model in Negative Fragement *)
+
 
 (* Gives the proof that any model with term as domain is countable. 
    It may be possible to generalize to arbitrary cardinality depandent

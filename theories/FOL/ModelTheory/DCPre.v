@@ -12,6 +12,8 @@ Notation sig := sigT.
 Notation Sig := existT.
 Notation pi1 := projT1.
 
+(** * Utils *)
+
 Section Least_witness.
 
     Definition nat_eqdec : eqdec nat.

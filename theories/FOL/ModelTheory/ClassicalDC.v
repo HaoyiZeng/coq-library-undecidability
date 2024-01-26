@@ -3,6 +3,8 @@ Require Import Undecidability.FOL.Syntax.BinSig.
 Require Import Undecidability.FOL.ModelTheory.Core.
 Require Import Undecidability.FOL.ModelTheory.DCPre.
 
+(** * Dependent choice over decidable predicates *)
+
 Section DC.
 
     Fact Σ_countable: countable_sig.
