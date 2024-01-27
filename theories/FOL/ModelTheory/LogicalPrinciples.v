@@ -794,8 +794,8 @@ Notation BEP' := (@BEP_to nat).
 Notation DP := (@BDP_to unit).
 Notation EP := (@BEP_to unit).
 
-Notation BDP₁ := (@BDP_scheme nat unit).
-Notation BEP₁ := (@BEP_scheme nat unit).
+Notation DP_nat := (@BDP_scheme nat unit).
+Notation EP_nat := (@BEP_scheme nat unit).
 
 Section scheme_facts_basic.
 
@@ -948,7 +948,7 @@ Section scheme_facts_2.
           exfalso. apply R. now exists w.
     Qed.
 
-    Fact BDP_BDP₁_iff_DP: BDP /\ BDP₁ <-> DP.
+    Fact BDP_DP_nat_iff_DP: BDP /\ DP_nat <-> DP.
     Proof.
         split.
         - intros [H1 H2] X x P.
@@ -963,12 +963,12 @@ Section scheme_facts_2.
           apply Hf. intros []. apply H0. all: exact 42.
     Qed.
 
-    Lemma BDP_BDP₁_iff_LEM: (BDP /\ BDP₁) <-> LEM.
+    Lemma BDP_DP_nat_iff_LEM: (BDP /\ DP_nat) <-> LEM.
     Proof.
         split.
-        - intro H. rewrite BDP_BDP₁_iff_DP in H.
+        - intro H. rewrite BDP_DP_nat_iff_DP in H.
           now apply DP_impl_LEM.
-        - intros H. rewrite BDP_BDP₁_iff_DP.
+        - intros H. rewrite BDP_DP_nat_iff_DP.
           now rewrite DP_iff_LEM.
     Qed.
 
@@ -993,7 +993,7 @@ Section scheme_facts_2.
     Qed.
     
 
-    Fact BEP_BEP₁_iff_EP: BEP /\ BEP₁ <-> EP.
+    Fact BEP_EP_nat_iff_EP: BEP /\ EP_nat <-> EP.
     Proof.
         split.
         - intros [H1 H2] X x P .
@@ -1009,12 +1009,12 @@ Section scheme_facts_2.
             now exists 42. exact 42.
     Qed.
 
-    Lemma BEP_BEP₁_iff_LEM: (BEP /\ BEP₁) <-> LEM.
+    Lemma BEP_EP_nat_iff_LEM: (BEP /\EP_nat) <-> LEM.
     Proof.
         split.
-        - intro H. rewrite BEP_BEP₁_iff_EP in H.
+        - intro H. rewrite BEP_EP_nat_iff_EP in H.
             now apply EP_impl_LEM.
-        - intros H. rewrite BEP_BEP₁_iff_EP.
+        - intros H. rewrite BEP_EP_nat_iff_EP.
             now rewrite EP_iff_LEM.
     Qed.
 
