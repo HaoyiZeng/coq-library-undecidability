@@ -4,7 +4,7 @@ Require Import Undecidability.FOL.ModelTheory.DCPre.
 Require Import Undecidability.FOL.ModelTheory.ConstructiveLS.
 Require Import Arith Lia PeanoNat Peano_dec.
 
-(** * Construction of Henkin Environment *)
+(** * Construction of Henkin Environments *)
 
 Section Incl_im.
     Variables A B C: Type.

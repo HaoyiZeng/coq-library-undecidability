@@ -5,7 +5,7 @@ Require Import Undecidability.FOL.ModelTheory.Core.
 Require Import Program.Equality Vectors.VectorDef.
 Require Import Coq.Arith.Peano_dec.
 
-(** * Reverse Analysis *)
+(** * Reverse Analysis of DLS *)
 
 Section LSBDPBEP.
 
