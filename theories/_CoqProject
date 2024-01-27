@@ -938,18 +938,18 @@ FOL/ArithmeticalHierarchy/ArithmeticalHierarchySyntactic.v
 FOL/ArithmeticalHierarchy/ArithmeticalHierarchySemantic.v
 FOL/ArithmeticalHierarchy/ArithmeticalHierarchyEquiv.v
 
+FOL/ModelTheory/DCPre.v
 FOL/ModelTheory/LogicalPrinciples.v
 FOL/ModelTheory/UpwardLS.v
-FOL/ModelTheory/DCPre.v
 
 FOL/ModelTheory/FragmentCore.v
 FOL/ModelTheory/FragmentFacts.v
 FOL/ModelTheory/FragmentHenkinModel.v 
 
 FOL/ModelTheory/Core.v 
-FOL/ModelTheory/ClassicalDC.v
 FOL/ModelTheory/ConstructiveLS.v
 FOL/ModelTheory/HenkinEnv.v
+FOL/ModelTheory/ClassicalDC.v
 FOL/ModelTheory/ReverseLS.v
 
 FOL/ModelTheory/AnalysisLS.v

@@ -9,12 +9,15 @@ authors: ["Yannick Forster"
           "Andrej Dudenhefner"
           "Edith Heiter"
           "Marc Hermes"
+          "Johannes Hostert"
           "Dominik Kirst"
+          "Mark Koch"
           "Fabian Kunze"
           "Gert Smolka"
           "Simon Spies"
           "Dominik Wehr"
           "Maximilian Wuttke"]
+
 license: "CECILL-2.1"
 build: [
   [make "-j%{jobs}%"]
@@ -23,15 +26,14 @@ install: [
   [make "install"]
 ]
 depends: [
-  "coq" {= "8.15.0"}
+  "coq" {>= "8.15.0" & < "8.15.1"}
   "coq-equations" {= "1.3+8.15"}
   "ocaml"
   "coq-smpl" {>= "8.15"}
-  "coq-metacoq-template" {= "dev+8.15"}
+  "coq-metacoq-template" {= "1.0+8.15"}
 ]
 
 synopsis: "A Coq Library of Undecidability Proofs"
 url {
   git: "https://github.com/uds-psl/coq-library-undecidability.git#coq-8.13"
 }
-

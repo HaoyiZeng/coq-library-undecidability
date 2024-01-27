@@ -36,7 +36,7 @@ Notation logical_decidable p := (forall x, logical_dec (p x)).
 Notation decider p := (forall x, dec (p x)).
 Notation "R ∘ f" := (consf R f) (at level 30).
 
-(** * Logical Principles *)
+(** * Standard and Blurred Logical Principles *)
 
 Section axiom.
 

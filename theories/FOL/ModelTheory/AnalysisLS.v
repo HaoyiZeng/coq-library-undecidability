@@ -3,7 +3,7 @@ Require Import Undecidability.FOL.ModelTheory.HenkinEnv.
 Require Import Undecidability.FOL.ModelTheory.ReverseLS. 
 Require Import Undecidability.FOL.ModelTheory.Core.
 
-(** * Decomposition of DLS *)
+(** * Full Decomposition of DLS *)
 
 Section LSiffDC.
 
