@@ -773,6 +773,9 @@ Section DP_EP.
 
 End DP_EP.
 
+    Notation DP := (forall A, A -> DP_on A).
+    Notation EP := (forall A, A -> EP_on A).
+
 Section BDP_BEP_scheme.
 
     Definition BDP_scheme (domain range: Type) :=
@@ -791,8 +794,8 @@ Notation BEP_to A := (forall domain, domain -> @BEP_scheme domain A).
 Notation BDP' := (@BDP_to nat).
 Notation BEP' := (@BEP_to nat).
 
-Notation DP := (@BDP_to unit).
-Notation EP := (@BEP_to unit).
+Notation BDP_unit := (@BDP_to unit).
+Notation BEP_unit := (@BEP_to unit).
 
 Notation DP_nat := (@BDP_scheme nat unit).
 Notation EP_nat := (@BEP_scheme nat unit).
@@ -820,8 +823,6 @@ Section scheme_facts_basic.
         destruct (H2 (fun n => P (f n))) as [h Hh].
         exists (fun a => f (h a)). firstorder.
     Qed.
-
-
 
     Fact scheme_facts_basic41: forall A B, inhabited B -> BDP_scheme A unit -> BDP_scheme A B.
     Proof.
@@ -903,34 +904,33 @@ End scheme_facts_1.
 
 Section scheme_facts_2.
     Fact DP_is_DP: 
-        DP <-> (forall A (P: A -> Prop), A -> exists x, P x -> forall x, P x).
+        BDP_unit <-> DP.
     Proof.
-        split; intros.
-        - destruct (H A X P); try easy.
-            exists (x tt); intro h.
-            apply H0. now intros [].
-        - intros P. destruct (H domain P); try easy.
-            exists (fun _ => x).
+        split; intros H A x P.
+        - destruct (H A x P); try easy.
+            exists (x0 tt); intro h.
+            apply H0. now intros []. 
+        - destruct (H A x P); try easy.
+            exists (fun _ => x0).
             intros; apply H0, H1. exact tt.
     Qed.
 
     Fact EP_is_EP: 
-        EP <-> (forall A (P : A -> Prop), A -> exists x, (exists x, P x) -> P x).
+        BEP_unit <-> EP.
     Proof.
-        split; intros.
-        - destruct (H A X P); try easy.
-            exists (x tt); intro h.
+        split; intros H A x P.
+        - destruct (H A x P); try easy.
+            exists (x0 tt); intro h.
             destruct H0 as [[] Pu]; easy. 
-        - intros P. destruct (H domain P); try easy.
-            exists (fun _ => x).
+        - destruct (H A x P); try easy.
+            exists (fun _ => x0).
             intros. exists tt. now apply H0, H1.
     Qed.
 
     Lemma DP_impl_LEM : DP -> LEM.
     Proof.
         intros dp P.
-        rewrite DP_is_DP in dp.
-        destruct (dp (option (P \/ ~ P)) (fun x => match x with Some x => ~ P | _ => True end) None) as [[x|] H].
+        destruct (dp (option (P \/ ~ P)) None (fun x => match x with Some x => ~ P | _ => True end) ) as [[x|] H].
         - exact x.
         - right. intros HP. now apply (H I (Some (or_introl HP))).
     Qed.
@@ -941,9 +941,9 @@ Section scheme_facts_2.
         intros H X x P.
         destruct (H (exists x, ~ P x)) as [L|R].
         - destruct L as [w Pw].
-          exists (fun _ => w). intros Px. 
-          specialize (Px tt). exfalso. easy.
-        - exists (fun _ => x). intros _ w.
+          exists w. intros Px. 
+          specialize Px. exfalso. easy.
+        - exists x. intros _ w.
           destruct (H (P w)); [easy|].
           exfalso. apply R. now exists w.
     Qed.
@@ -951,16 +951,17 @@ Section scheme_facts_2.
     Fact BDP_DP_nat_iff_DP: BDP /\ DP_nat <-> DP.
     Proof.
         split.
-        - intros [H1 H2] X x P.
+        - intros [H1 H2]. rewrite <- DP_is_DP.
+          intros  X x P.
           destruct (H1 _ x P) as [f Hf].
           destruct (H2 (fun n => P (f n))) as [f' Hf'].
           exists (fun n => f (f' tt)).
           intros. apply Hf. intros. apply Hf'.
           intros []. apply H. exact tt.
-        - intros H; split; [|apply H].
+        - intros H; split; [| rewrite <- DP_is_DP in H; apply H].
           intros X x P. destruct (H X x P) as [f Hf].
-          exists (fun n => f tt). intros.
-          apply Hf. intros []. apply H0. all: exact 42.
+          exists (fun n => f). intros.
+          apply Hf. apply H0. all: exact 42.
     Qed.
 
     Lemma BDP_DP_nat_iff_LEM: (BDP /\ DP_nat) <-> LEM.
@@ -975,9 +976,8 @@ Section scheme_facts_2.
     Lemma EP_impl_LEM : EP -> LEM.
     Proof.
         intros dp P.
-        rewrite EP_is_EP in dp.
         destruct 
-        (dp (option (P \/ ~ P))  (fun x => match x with  |Some x => P  | _ => False end)  None) as [[x|] H].
+        (dp (option (P \/ ~ P)) None (fun x => match x with  |Some x => P  | _ => False end)) as [[x|] H].
         - exact x.
         - right. intros HP. apply H. exists (Some (or_introl HP)). exact HP.
     Qed.
@@ -987,8 +987,8 @@ Section scheme_facts_2.
         split. apply EP_impl_LEM.
         intros H X x P.
         destruct (H (exists x, P x)) as [[w Pw]|R].
-        - exists (fun _ => w). intros _. now exists tt. 
-        - exists (fun _ => x). intros [w Pw].
+        - exists w. now intros _.
+        - exists x. intros [w Pw].
           exfalso. apply R. now exists w.
     Qed.
     
@@ -999,17 +999,16 @@ Section scheme_facts_2.
         - intros [H1 H2] X x P .
             destruct (H1 _ x P) as [f Hf].
             destruct (H2 (fun n => P (f n))) as [f' Hf'].
-            exists (fun n => f (f' tt)).
-            intros. apply Hf, Hf' in H. destruct H as [[] Hk].
-            now exists tt.
-        - intros H; split; [|apply H].
+            exists (f (f' tt)).
+            intros. apply Hf, Hf' in H. now destruct H as [[] Hk].
+        - intros H; split; [|rewrite <- EP_is_EP in H; apply H].
             intros X P x. destruct (H X P x) as [f Hf].
-            exists (fun n => f tt). intros.
-            apply Hf in H0. destruct H0 as [[] H0].
+            exists (fun n => f). intros.
+            apply Hf in H0. 
             now exists 42. exact 42.
     Qed.
 
-    Lemma BEP_EP_nat_iff_LEM: (BEP /\EP_nat) <-> LEM.
+    Lemma BEP_EP_nat_iff_LEM: (BEP /\ EP_nat) <-> LEM.
     Proof.
         split.
         - intro H. rewrite BEP_EP_nat_iff_EP in H.
@@ -1053,8 +1052,8 @@ Section scheme_facts_2.
         intros; split.
         - rewrite <- DP_iff_LEM in H.
           intros X x P. destruct (H X x P) as [f Hf].
-          exists (fun _ => f tt); intros HI; apply Hf.
-          intros []. apply HI; exact 42.
+          exists (fun _ => f); intros HI; apply Hf.
+          apply HI; exact 42.
         - intros P H'. rewrite LEM_iff_DN in H.
           now apply H.
     Qed.
@@ -1079,8 +1078,8 @@ Section scheme_facts_2.
         intros; split.
         - rewrite <- EP_iff_LEM in H.
             intros X x P. destruct (H X x P) as [f Hf].
-            exists (fun _ => f tt). intros HI. exists 42.
-            now destruct (Hf HI) as [[] ?].
+            exists (fun _ => f). intros HI. exists 42.
+            now apply Hf.
         - intros P H'. rewrite LEM_iff_DN in H.
             now apply H.
     Qed.
@@ -1133,8 +1132,8 @@ Section scheme_facts_2.
         intros.
         intros A [a] P Q HP.
         destruct (H A a P). 
-        exists (x tt); intros Q'%HP.
-        destruct H0 as [[] P']; easy.
+        exists x; intros Q'%HP.
+        now apply H0. 
     Qed.
 
     Fact IP_iff_EP: IP <-> EP.
@@ -1142,8 +1141,8 @@ Section scheme_facts_2.
         split; [|apply EP_impl_IP].
         intros IP A IA. intros P.
         destruct (IP A (inhabits IA) P (exists x, P x)).
-        easy. exists (fun v => x).
-        intros P'. exists tt. now apply H.
+        easy. exists x.
+        intros P'. now apply H.
     Qed.
 
     Fact IP_iff_LEM: IP <-> LEM.
