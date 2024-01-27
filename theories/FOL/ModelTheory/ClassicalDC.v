@@ -3,7 +3,7 @@ Require Import Undecidability.FOL.Syntax.BinSig.
 Require Import Undecidability.FOL.ModelTheory.Core.
 Require Import Undecidability.FOL.ModelTheory.DCPre.
 
-(** * Dependent choice over decidable predicates *)
+(** * Reverse Analysis: DC-Delta *)
 
 Section DC.
 

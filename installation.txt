@@ -10,7 +10,7 @@ eval $(opam env)
 opam repo add coq-released https://coq.inria.fr/opam/released
 opam install . --deps-only
 
-Next, to compile only the files relevant for the development, run "make FOL/ModelTheory/AnalysisLS.vo" from inside the "theories" folder, this should take around 5 minutes. To compile the whole library, run "make all", this will take around 30 minutes.
+Next, to compile only the files relevant for the development, run "make FOL/ModelTheory/AnalysisLS.vo" from inside the "theories" folder, this should take around 1 minute. To compile the whole library, run "make all", this will take around 30 minutes.
 
 
 # Using the Hyperlinks
