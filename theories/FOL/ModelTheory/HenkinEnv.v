@@ -518,7 +518,7 @@ Section FixedModel.
             intros.
             destruct (@CC_term M (fun phi w => M ⊨[w .: ρ] phi -> M ⊨[ρ] (∀ phi)) nonempty) as [F PF].
             - intro φ; destruct (dp nonempty (fun w => (M ⊨[w.:ρ] φ ))) as [w Hw].
-              exists (w tt); intro Hx; cbn; apply Hw; now intros [].
+              exists w; intro Hx; cbn; now apply Hw.
             - exists (fun n: nat => F (phi_ n)).
               intro φ; specialize (PF φ).
               exists (nth_ φ); rewrite (Hphi φ). easy.
@@ -530,7 +530,7 @@ Section FixedModel.
             intros.
             destruct (@CC_term M (fun phi w => M ⊨[ρ] (∃ phi) -> M ⊨[w .: ρ] phi) nonempty) as [F PF].
             - intro φ; destruct (ep nonempty (fun w => (M ⊨[w.:ρ] φ ))) as [w Hw].
-              exists (w tt). intros Hx%Hw. now destruct Hx as [[] Hx].
+              exists w. now intros Hx%Hw.
             - exists (fun n: nat => F (phi_ n)).
               intro φ; specialize (PF φ).
               exists (nth_ φ); rewrite (Hphi φ). easy.
