@@ -1127,27 +1127,35 @@ Section scheme_facts_2.
           symmetry. apply Hx. now exists n.
     Qed.
 
-    Fact EP_impl_IP: EP -> IP.
+    Fact EP_impl_IP A: EP_on A -> IP_on A.
     Proof.
         intros.
-        intros A [a] P Q HP.
-        destruct (H A a P). 
+        intros P Q HP.
+        destruct (H P). 
         exists x; intros Q'%HP.
         now apply H0. 
     Qed.
 
-    Fact IP_iff_EP: IP <-> EP.
+    Fact IP_iff_EP A: IP_on A <-> EP_on A.
     Proof.
         split; [|apply EP_impl_IP].
-        intros IP A IA. intros P.
-        destruct (IP A (inhabits IA) P (exists x, P x)).
+        intros IP P.  
+        destruct (IP P (exists x, P x)).
         easy. exists x.
         intros P'. now apply H.
     Qed.
 
+    Fact IP_iff_EP': IP <-> EP.
+    Proof.
+        split. intros H A P. rewrite <- IP_iff_EP.
+        now apply H.
+        intros H A [a]. rewrite IP_iff_EP.
+        now apply H.
+    Qed.
+
     Fact IP_iff_LEM: IP <-> LEM.
     Proof.
-        rewrite IP_iff_EP.
+        rewrite IP_iff_EP'.
         apply EP_iff_LEM.
     Qed.
 
