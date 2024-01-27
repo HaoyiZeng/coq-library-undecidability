@@ -799,13 +799,13 @@ Notation BEP₁ := (@BEP_scheme nat unit).
 
 Section scheme_facts_basic.
 
-    Goal forall A, BDP_scheme A A.
+    Fact scheme_facts_basic11: forall A, BDP_scheme A A.
     Proof. intros A P. exists (fun n => n). eauto. Qed. 
 
-    Goal forall A, BEP_scheme A A.
+    Fact scheme_facts_basic12: forall A, BEP_scheme A A.
     Proof. intros A P. exists (fun n => n). eauto. Qed.
 
-    Goal forall A B C, 
+    Fact scheme_facts_basic2: forall A B C, 
             BDP_scheme A B -> BDP_scheme B C -> BDP_scheme A C.
     Proof. intros A B C H1 H2.
            intros P . destruct (H1 P) as [f Hf].
@@ -813,7 +813,7 @@ Section scheme_facts_basic.
            exists (fun a => f (h a)). firstorder.
     Qed.
 
-    Goal forall A B C, 
+    Fact scheme_facts_basic3: forall A B C, 
             BEP_scheme A B -> BEP_scheme B C -> BEP_scheme A C.
     Proof. intros A B C H1 H2.
         intros P. destruct (H1 P) as [f Hf].
@@ -821,7 +821,9 @@ Section scheme_facts_basic.
         exists (fun a => f (h a)). firstorder.
     Qed.
 
-    Goal forall A B, inhabited B -> BDP_scheme A unit -> BDP_scheme A B.
+
+
+    Fact scheme_facts_basic41: forall A B, inhabited B -> BDP_scheme A unit -> BDP_scheme A B.
     Proof.
         intros A B [b] H P.
         destruct (H P) as [f Hf].
@@ -829,12 +831,34 @@ Section scheme_facts_basic.
         intros. apply Hf. intros []. now apply H0.
     Qed.
 
-    Goal forall A B, inhabited B -> BEP_scheme A unit -> BEP_scheme A B.
+    Fact scheme_facts_basic42 A: BDP_scheme A unit <-> DP_on A.
+    Proof.
+        split; intros H P.
+        - destruct (H P); try easy.
+            exists (x tt); intro h.
+            apply H0. now intros [].
+        - destruct (H P); try easy.
+            exists (fun _ => x).
+            intros; apply H0, H1. exact tt.
+    Qed.
+
+    Fact scheme_facts_basic51: forall A B, inhabited B -> BEP_scheme A unit -> BEP_scheme A B.
     Proof.
         intros A B [b] H P.
         destruct (H P) as [f Hf].
         exists (fun _ => f tt).
         intros. apply Hf in H0. exists b. now destruct H0 as [[] H0].
+    Qed.
+
+    Fact scheme_facts_basic52 A: BEP_scheme A unit <-> EP_on A.
+    Proof.
+        split; intros H P.
+        - destruct (H P); try easy.
+            exists (x tt); intro h.
+            destruct H0 as [[] Pu]; easy. 
+        -  destruct (H  P); try easy.
+            exists (fun _ => x).
+            intros. exists tt. now apply H0, H1.
     Qed.
     
 End scheme_facts_basic.
@@ -997,6 +1021,8 @@ Section scheme_facts_2.
     Definition MP :=
         forall f : nat -> bool, ~ ~ (exists n, f n = true) -> exists n, f n = true.
 
+    Definition DN := forall P, ~ ~ P -> P.
+
     Lemma BDP_MP_impl_LEM :
         BDP -> MP -> LEM.
     Proof.
@@ -1009,8 +1035,33 @@ Section scheme_facts_2.
         - destruct (f n); try tauto. discriminate.
     Qed.
 
-    Lemma BEP_MP_impl_DNE :
-        BEP -> MP -> forall P, ~ ~ P -> P.
+    Fact LEM_iff_DN: LEM <-> DN.
+    Proof.
+        split.
+        intros H P H1. specialize (H P) as [H|H].
+        exact H. contradict (H1 H).
+        intros H P. apply H.
+        intros H1. apply H1.
+        right. intro p. apply H1.
+        now left.
+    Qed.
+
+    Lemma BDP_MP_iff_LEM: 
+        (BDP /\ MP) <-> LEM.
+    Proof.
+        split; [intros [h1 h2]; now apply BDP_MP_impl_LEM|].
+        intros; split.
+        - rewrite <- DP_iff_LEM in H.
+          intros X x P. destruct (H X x P) as [f Hf].
+          exists (fun _ => f tt); intros HI; apply Hf.
+          intros []. apply HI; exact 42.
+        - intros P H'. rewrite LEM_iff_DN in H.
+          now apply H.
+    Qed.
+
+
+    Lemma BEP_MP_impl_DN :
+        BEP -> MP -> DN.
     Proof.
         intros dp mp P HP.
         destruct (dp (option P) None (fun x => match x with Some x => P | _ => False end)) as [f H].
@@ -1020,6 +1071,20 @@ Section scheme_facts_2.
             + exists n. destruct (f n); tauto.
         - destruct (f x); try discriminate. exact p.
     Qed.
+
+    Lemma BEP_MP_iff_LEM :
+        (BEP /\ MP) <-> LEM.
+    Proof.
+        split; [intros [h1 h2]; rewrite LEM_iff_DN; now apply BEP_MP_impl_DN|].
+        intros; split.
+        - rewrite <- EP_iff_LEM in H.
+            intros X x P. destruct (H X x P) as [f Hf].
+            exists (fun _ => f tt). intros HI. exists 42.
+            now destruct (Hf HI) as [[] ?].
+        - intros P H'. rewrite LEM_iff_DN in H.
+            now apply H.
+    Qed.
+
 
     Lemma KS_LPO_LEM: KS -> LPO -> LEM.
     Proof.

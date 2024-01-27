@@ -41,24 +41,31 @@ Section LSiffDC.
           now apply  LS_downward.
     Qed.
 
-    Theorem Decomposition:
-      (DLS -> DDC /\ BDP /\ BEP /\ BCC) 
-        /\ 
-      (DDC /\ BDP /\ BEP /\ BCC -> BDP /\ BEP /\ BDC2) 
-        /\ 
-      (BDC2 /\ BDP /\ BEP -> OBDC) 
-        /\ 
-      (OBDC -> DLS).
+    Theorem Decomposition1: 
+      DLS -> DDC /\ BDP /\ BEP /\ BCC.
+    Proof. now rewrite LS_iff_DDC_BDP_BEP_BCC. Qed.
+
+    Theorem Decomposition2: 
+      DDC /\ BDP /\ BEP /\ BCC -> BDP /\ BEP /\ BDC2.
     Proof.
-      split. now rewrite LS_iff_DDC_BDP_BEP_BCC.
-      split. intros (h1 & h2 & h3 & h4). repeat split; eauto; now apply res_BDC2.
-      split. intros (h1 & h2 & h3).
+      intros (h1 & h2 & h3 & h4). repeat split; eauto; now apply res_BDC2.
+    Qed.
+
+    Theorem Decomposition3:
+      BDC2 /\ BDP /\ BEP -> OBDC.
+    Proof.
+      intros (h1 & h2 & h3).
       assert DDC as h4 by (now apply BDC2_impl_DDC).
       assert BCC. apply BDC_impl_BCC. now apply BDC2_impl_BDC.
       assert DLS by now rewrite LS_iff_DDC_BDP_BEP_BCC.
       now apply LS_impl_OBDC.
-      intro H. now apply LS_downward'.
     Qed.
-  
+
+    Theorem Decomposition4:
+      OBDC <-> DLS.
+    Proof.
+      split; [intro H; now apply LS_downward'|].
+      apply LS_impl_OBDC.
+    Qed.
 
 End LSiffDC.
